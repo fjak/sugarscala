@@ -7,10 +7,11 @@ package scala.tools.nsc
 package ast.parser
 
 import javac._
+import sugar.SGLRParsers
 
 /** An nsc sub-component.
  */
-abstract class SyntaxAnalyzer extends SubComponent with Parsers with MarkupParsers with Scanners with JavaParsers with JavaScanners {
+abstract class SyntaxAnalyzer extends SubComponent with SGLRParsers with Parsers with MarkupParsers with Scanners with JavaParsers with JavaScanners {
 
   val phaseName = "parser"
 
@@ -25,8 +26,7 @@ abstract class SyntaxAnalyzer extends SubComponent with Parsers with MarkupParse
       informProgress("parsing " + unit)
       unit.body =
         if (unit.isJava) new JavaUnitParser(unit).parse()
-        else if (reporter.incompleteHandled) new UnitParser(unit).parse()
-        else new UnitParser(unit).smartParse()
+        else new SGLRUnitParser(unit).parse()
 
       if (settings.Yrangepos.value && !reporter.hasErrors)
         validatePositions(unit.body)
