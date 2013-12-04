@@ -1,0 +1,52 @@
+Source:
+object HelloWorld
+
+Translates to the following scalac AST:
+PackageDef(
+  pid =
+    Ident(TermName_S(<empty>)),
+  stats =
+    List(
+      ModuleDef(
+        mods =
+	  Modifiers(
+	    flags = 0,
+	    positions = Map(),
+	    privateWithin = TypeName_S("")),
+	name = TermName_R("HelloWorld"),
+	impl =
+	  Template(
+	    parents =
+	      List(
+	        Select(
+		  name = TypeName_S("AnyRef"),
+		  qualifier = Ident(TermName_S("scala")))),
+            self = emptyValDef,
+	    body =
+	      List(
+	        DefDef(
+		  mods = Modifiers(),
+		  name = TermName_S(<init>),
+		  tparams = Nil,
+		  tpt = TypeTree(orig = null, wasEmpty = false),
+		  vparamss = List(Nil),
+		  rhs =
+		    Block(
+		      expr = Literal(Constant(BoxedUnit())),
+		      stats =
+		        List(
+			  Apply(
+			    args = Nil,
+			    fun =
+			      Select(
+			        name = TermName_S(<init>),
+				qualifier =
+				  Super(
+				    mix = TypeName_S(""),
+				    qual =
+				      This(
+				        qual = TypeName_S(""),
+					symbol =
+					  NoSymbol(
+					    initName = TermName_S(<none>)))))))))))
+
