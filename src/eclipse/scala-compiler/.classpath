@@ -5,10 +5,13 @@
 	<classpathentry combineaccessrules="false" kind="src" path="/scala-library"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/fjbg"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/asm"/>
+	<classpathentry kind="con" path="org.scala-ide.sdt.launching.SCALA_CONTAINER"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry kind="lib" path="lib/ant/ant.jar"/>
 	<classpathentry kind="lib" path="lib/jline.jar"/>
 	<classpathentry kind="lib" path="lib/msil.jar"/>
+	<classpathentry kind="lib" path="lib/extra/org.spoofax.jsglr_1.2.0.201309171843.jar"/>
+	<classpathentry kind="lib" path="lib/extra/org.spoofax.terms_1.2.0.201309171843.jar"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/continuations-library"/>
 	<classpathentry kind="output" path="build-quick-compiler"/>
 </classpath>

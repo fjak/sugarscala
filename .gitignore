@@ -46,3 +46,10 @@
 
 # Standard symbolic link to build/quick/bin
 /qbin
+
+# Sugar files
+/lib/extra/*.jar
+/lib/extra/*.tbl
+
+# Scala-IDE run-generated files
+/src/eclipse/scala-compiler/**/*.class

@@ -16,7 +16,7 @@ trait SGLRParsers {
   import treeBuilder.{global => _, _}
 
   // TODO: figure out better way to get the parse table file
-  val scala_tbl_file = new File("../../../lib/Scala.tbl")
+  val scala_tbl_file = new File("../../../lib/extra/Scala.tbl")
   val scala_tbl = ParseTableManager.loadFromFile(scala_tbl_file)
   val parser = SGLRParser
 
