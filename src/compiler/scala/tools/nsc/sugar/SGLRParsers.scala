@@ -65,7 +65,7 @@ trait SGLRParsers {
     val sglr = new SGLR(tb, scala_tbl)
 
     def parse(source: SourceFile): IStrategoTerm = {
-      sglr.parse(new FileReader(source.file.file), source.file.name) match {
+      sglr.parse(new FileReader(source.file.file), source.file.name, "CompilationUnit") match {
         case v: IStrategoTerm => v
         case unexp => throw new RuntimeException(s"Expected IStrategoTerm, but got ${unexp}")
       }
