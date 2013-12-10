@@ -1,26 +1,25 @@
 package scala.tools.nsc.sugar
 
-trait ParseTree extends StrategoTerm
-case class Id(name: String) extends ParseTree
-trait AnnotationSeq extends ParseTree
-trait Modifier extends ParseTree
-trait PackageDeclarationSemi extends ParseTree
-trait PackageDeclaration extends ParseTree
+case class Id(name: String) extends StrategoTerm
+trait AnnotationSeq extends StrategoTerm
+trait Modifier extends StrategoTerm
+trait PackageDeclarationSemi extends StrategoTerm
+trait PackageDeclaration extends StrategoTerm
 case class CompilationUnit(
              pkgsDecls: Seq[PackageDeclarationSemi],
-             stats: Seq[TopStatSemi]) extends ParseTree
-case class TopStatSemi(stat: TopStat, terminator: String) extends ParseTree
-trait TopStat extends ParseTree
+             stats: Seq[TopStatSemi]) extends StrategoTerm
+case class TopStatSemi(stat: TopStat, terminator: String) extends StrategoTerm
+trait TopStat extends StrategoTerm
 case class TopTmplDef(
              annots: Option[AnnotationSeq],
              mods: Seq[Modifier],
              tmplDef: TmplDef) extends TopStat
-trait TmplDef extends ParseTree
+trait TmplDef extends StrategoTerm
 case class Object(objectDef: ObjectDef) extends TmplDef
 case class ObjectDef(
              id: Id,
-             classTemplateOpt: ClassTemplateOpt) extends ParseTree
-trait ClassTemplateOpt extends ParseTree
+             classTemplateOpt: ClassTemplateOpt) extends StrategoTerm
+trait ClassTemplateOpt extends StrategoTerm
 case class EmptyClassTemplateOpt extends ClassTemplateOpt
 
 object ParseTree {
