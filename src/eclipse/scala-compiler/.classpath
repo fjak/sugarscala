@@ -12,6 +12,9 @@
 	<classpathentry kind="lib" path="lib/msil.jar"/>
 	<classpathentry kind="lib" path="lib/extra/org.spoofax.jsglr_1.2.0.201309171843.jar"/>
 	<classpathentry kind="lib" path="lib/extra/org.spoofax.terms_1.2.0.201309171843.jar"/>
+	<classpathentry kind="lib" path="lib/extra/kiama_2.10-1.5.1.jar"/>
+	<classpathentry kind="lib" path="lib/extra/dsinfo_2.10-0.2.0.jar"/>
+	<classpathentry kind="lib" path="lib/extra/dsprofile_2.10-0.2.0.jar"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/continuations-library"/>
 	<classpathentry kind="output" path="build-quick-compiler"/>
 </classpath>

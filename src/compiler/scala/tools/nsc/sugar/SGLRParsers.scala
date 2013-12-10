@@ -10,7 +10,7 @@ import java.io.File
 import scala.reflect.internal.util.SourceFile
 import java.io.FileReader
 
-trait SGLRParsers extends ParseTrees {
+trait SGLRParsers {
   val global : Global
   import global._
   import treeBuilder.{global => _, _}
@@ -20,7 +20,7 @@ trait SGLRParsers extends ParseTrees {
   val scala_tbl = ParseTableManager.loadFromFile(scala_tbl_file)
   val parser = SGLRParser
 
-  def toScalacAST(term: ParseTree): Tree = {
+  def toScalacAST(term: StrategoTerm): Tree = {
     hello_world
   }
 
@@ -29,7 +29,8 @@ trait SGLRParsers extends ParseTrees {
       val strategoTerm = parser.parse(unit.source)
       val wrappedTerm = StrategoTerm(strategoTerm)
       val parseTree = ParseTree(wrappedTerm)
-      toScalacAST(parseTree)
+      val normalizedTree = NormalizedTree(parseTree)
+      toScalacAST(normalizedTree)
     }
   }
 
