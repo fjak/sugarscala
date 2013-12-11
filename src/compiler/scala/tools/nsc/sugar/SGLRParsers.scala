@@ -20,8 +20,28 @@ trait SGLRParsers {
   val scala_tbl = ParseTableManager.loadFromFile(scala_tbl_file)
   val parser = SGLRParser
 
-  def toScalacAST(term: StrategoTerm): Tree = {
-    hello_world
+  def toScalacAST(term: StrategoTerm): Tree = term match {
+    case EmptyPackage(stats) =>
+      PackageDef(
+        Ident(nme.EMPTY_PACKAGE_NAME),
+        stats map toScalacAST)
+    case sugar.ModuleDef(mods, name, tpl) =>
+      ModuleDef(
+        toScalacMods(mods),
+        name,
+        toScalacTemplate(tpl))
+  }
+
+  def toScalacMods(mods: sugar.Modifiers) = mods match {
+    case NoModifiers() => Modifiers()
+  }
+
+  def toScalacTemplate(tpl: sugar.Template) = tpl match {
+    case EmptyTemplate() =>
+      Template(
+        List(scalaAnyRefConstr),
+        emptyValDef,
+        List(defaultInit))
   }
 
   class SGLRUnitParser(unit: global.CompilationUnit) {
@@ -30,7 +50,8 @@ trait SGLRParsers {
       val wrappedTerm = StrategoTerm(strategoTerm)
       val parseTree = ParseTree(wrappedTerm)
       val normalizedTree = NormalizedTree(parseTree)
-      toScalacAST(normalizedTree)
+      val scalacAST = toScalacAST(normalizedTree)
+      scalacAST
     }
   }
 
