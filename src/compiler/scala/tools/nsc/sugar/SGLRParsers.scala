@@ -22,10 +22,10 @@ trait SGLRParsers {
   val parser = SGLRParser
 
   def toScalacAST(term: StrategoTerm): Tree = term match {
-    case EmptyPackage(stats) =>
+    case EmptyPackage(stats@_*) =>
       PackageDef(
         Ident(nme.EMPTY_PACKAGE_NAME),
-        stats map toScalacAST)
+        (stats map toScalacAST).toList)
     case sugar.ModuleDef(mods, name, tpl) =>
       ModuleDef(
         toScalacMods(mods),
