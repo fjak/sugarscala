@@ -9,7 +9,7 @@ trait Modifiers extends StrategoTerm
 case class NoModifiers extends Modifiers
 
 trait Package extends StrategoTerm
-case class EmptyPackage(stats: Seq[StrategoTerm]) extends Package
+case class EmptyPackage(stats: List[StrategoTerm]) extends Package
 
 case class
 ModuleDef(mods: Modifiers, name: String, tpl: Template) extends StrategoTerm

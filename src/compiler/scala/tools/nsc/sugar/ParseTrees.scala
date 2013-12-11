@@ -6,13 +6,13 @@ trait Modifier extends StrategoTerm
 trait PackageDeclarationSemi extends StrategoTerm
 trait PackageDeclaration extends StrategoTerm
 case class CompilationUnit(
-             pkgsDecls: Seq[PackageDeclarationSemi],
-             stats: Seq[TopStatSemi]) extends StrategoTerm
+             pkgsDecls: List[PackageDeclarationSemi],
+             stats: List[TopStatSemi]) extends StrategoTerm
 case class TopStatSemi(stat: TopStat, terminator: String) extends StrategoTerm
 trait TopStat extends StrategoTerm
 case class TopTmplDef(
              annots: Option[AnnotationSeq],
-             mods: Seq[Modifier],
+             mods: List[Modifier],
              tmplDef: TmplDef) extends TopStat
 trait TmplDef extends StrategoTerm
 case class Object(objectDef: ObjectDef) extends TmplDef
@@ -46,13 +46,13 @@ object ParseTree {
 
   def compilationUnit(term: StrategoTerm): CompilationUnit = term match {
     case Appl("CompilationUnit", Lst(pkgDecls@_*), Lst(stats@_*)) =>
-      compilationUnit(pkgDecls, stats)
+      compilationUnit(pkgDecls.toList, stats.toList)
     case _ => sys.error(s"Malformed CompilationUnit: ${term}")
   }
 
   def compilationUnit(
-        pkgDeclSemis: Seq[StrategoTerm],
-        topStatSemis: Seq[StrategoTerm]) =
+        pkgDeclSemis: List[StrategoTerm],
+        topStatSemis: List[StrategoTerm]) =
     CompilationUnit(pkgDeclSemis map pkgDeclSemi, topStatSemis map topStatSemi)
 
   def topStatSemi(term: StrategoTerm) = term match {
@@ -63,13 +63,13 @@ object ParseTree {
 
   def topStat(term: StrategoTerm) = term match {
     case Appl("TopTmplDef", opt, Lst(mods@_*), tmpl) =>
-      topTmplDef(opt, mods, tmpl)
+      topTmplDef(opt, mods.toList, tmpl)
     case _ => sys.error(s"Malformed TopStat: ${term}")
   }
 
   def topTmplDef(
         opt: StrategoTerm,
-        mods: Seq[StrategoTerm],
+        mods: List[StrategoTerm],
         tmpl: StrategoTerm) =
     TopTmplDef(
       option[AnnotationSeq](opt)(annotationSeq),
