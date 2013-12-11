@@ -12,6 +12,7 @@
 	<classpathentry kind="lib" path="lib/msil.jar"/>
 	<classpathentry kind="lib" path="lib/extra/org.spoofax.jsglr_1.2.0.201309171843.jar"/>
 	<classpathentry kind="lib" path="lib/extra/org.spoofax.terms_1.2.0.201309171843.jar"/>
+	<classpathentry kind="lib" path="lib/extra/scala-sugar-20131211.jar"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/continuations-library"/>
 	<classpathentry kind="output" path="build-quick-compiler"/>
 </classpath>

@@ -9,15 +9,16 @@ import java.io.FileInputStream
 import java.io.File
 import scala.reflect.internal.util.SourceFile
 import java.io.FileReader
+import java.io.InputStream
 
 trait SGLRParsers {
   val global : Global
   import global._
   import treeBuilder.{global => _, _}
 
-  // TODO: figure out better way to get the parse table file
-  val scala_tbl_file = new File("../../../lib/extra/Scala.tbl")
-  val scala_tbl = ParseTableManager.loadFromFile(scala_tbl_file)
+  val scala_tbl_stream =
+    getClass.getResourceAsStream("/scala/tools/nsc/sugar/Scala.tbl")
+  val scala_tbl = ParseTableManager.loadFromStream(scala_tbl_stream)
   val parser = SGLRParser
 
   def toScalacAST(term: Term): Tree = {
@@ -75,6 +76,7 @@ trait SGLRParsers {
   object ParseTableManager {
     val ptm = new org.spoofax.jsglr.io.ParseTableManager
 
+    def loadFromStream(stream: InputStream) = ptm.loadFromStream(stream)
     def loadFromFile(file: File) = ptm.loadFromStream(new FileInputStream(file))
   }
 
