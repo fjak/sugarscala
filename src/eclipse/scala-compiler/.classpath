@@ -15,6 +15,7 @@
 	<classpathentry kind="lib" path="lib/extra/kiama_2.10-1.5.1.jar"/>
 	<classpathentry kind="lib" path="lib/extra/dsinfo_2.10-0.2.0.jar"/>
 	<classpathentry kind="lib" path="lib/extra/dsprofile_2.10-0.2.0.jar"/>
+	<classpathentry kind="lib" path="lib/extra/scala-sugar-20131211.jar"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/continuations-library"/>
 	<classpathentry kind="output" path="build-quick-compiler"/>
 </classpath>
