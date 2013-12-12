@@ -26,23 +26,25 @@ trait SGLRParsers {
       PackageDef(
         Ident(nme.EMPTY_PACKAGE_NAME),
         (stats map toScalacAST).toList)
-    case sugar.ModuleDef(mods, name, tpl) =>
+    case NormModuleDef(mods, name, tpl) =>
       ModuleDef(
         toScalacMods(mods),
         name,
         toScalacTemplate(tpl))
   }
 
-  def toScalacMods(mods: sugar.Modifiers) = mods match {
+  def toScalacMods(mods: NormModifiers) = mods match {
     case NoModifiers() => Modifiers()
   }
 
-  def toScalacTemplate(tpl: sugar.Template) = tpl match {
+  def toScalacTemplate(tpl: NormTemplateTrait) = tpl match {
     case EmptyTemplate() =>
       Template(
         List(scalaAnyRefConstr),
         emptyValDef,
         List(defaultInit))
+    case NormTemplate(parents, self, body@_*) =>
+      Template(Nil, emptyValDef, List(defaultInit) ++ (body map toScalacAST))
   }
 
   class SGLRUnitParser(unit: global.CompilationUnit) {
