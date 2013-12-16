@@ -21,29 +21,99 @@ trait SGLRParsers {
   val scala_tbl = ParseTableManager.loadFromStream(scala_tbl_stream)
   val parser = SGLRParser
 
-  case class IObjectDef(mods: Modifiers, name: TermName) extends Tree
+  case class IUnfinishedTemplate(parents: Seq[Tree], self: Option[ValDef], body: Tree*) extends Tree
+  case class IObjectDef(mods: Modifiers, name: TermName, tpl: Option[IUnfinishedTemplate]) extends Tree
 
-  def toIScalacAST(term: Term): Tree = term match {
+  def toTree(term: Term): Tree = term match {
     case "CompilationUnit" @@ (Lst(pkgs@_*), Lst(topStats@_*)) => toPackageDef(pkgs, topStats)
-    case "TopStatSemi" @@ (topStat, _) => toIScalacAST(topStat)
+
+    case "TopStatSemi" @@ (topStat, _) => toTree(topStat)
+
+    case "TemplateStatSemi" @@ (stat, _) => toTree(stat)
+
     case "TopTmplDef" @@ (mods, annots, "Object" @@ ("ObjectDef" @@ (name, body))) =>
-      toModuleDef(mods, annots, name, body)
-    case _ => sys.error(s"Can not translate term ${term} to scalac AST")
+      IObjectDef(toModifiers(mods, annots), toTermName(name), toTemplate(body))
+
+    case "DefTemplateStat" @@ (mods, annots, "FunDefDef" @@ funDef) =>
+      toDefDef(toModifiers(mods, annots), funDef)
+
+    case "Some" @@ (t) => toTree(t)
+
+    case @@("None") => EmptyTree
+
+    case "ParamTyped" @@ (t) => toTree(t)
+
+    case "ParameterizedType" @@ (tpt, targs) =>
+      AppliedTypeTree(toTree(tpt), toTrees(targs))
+
+    case "Type" @@ ("Id" @@ (Str(name))) => Ident(newTypeName(name))
+
+    case "Block" @@ (t) => Block(toTrees(t):_*)
+
+    case "BlockStatSemi" @@ (t, _) => toTree(t)
+
+    case "AppExpr" @@ (fun, args) => Apply(toTree(fun), toTrees(args))
+
+    case "Id" @@ Str(name) => Ident(name)
+
+    case "String" @@ Str(s) => Literal(Constant(s))
+
+    case _ => sys.error(s"Can not translate term ${term} to Tree")
   }
 
-  def toPackageDef(pkgs: Seq[Term], topStats: Seq[Term]) = pkgs match {
-    case Nil => PackageDef(Ident(nme.EMPTY_PACKAGE_NAME), (topStats map toIScalacAST).toList)
+  def toTrees(term: Term): List[Tree] = term match {
+    case "TypeArgs" @@ (Lst(ts@_*)) => (ts map toTree).toList
+    case Lst(ts@_*) => (ts map toTree).toList
+    case "ArgumentExprs" @@ t => toTrees(t)
+    case "Some" @@ t => toTrees(t)
+    case @@("None") => Nil
+    case "Exprs" @@ t => toTrees(t)
+    case _ => sys.error(s"Can not transform ${term} to List[Tree]")
+  }
+
+  def toDefDef(mods: Modifiers, funDef: Term): DefDef = funDef match {
+    case "ProcDef" @@ ("FunSig" @@ ("Id" @@ Str(name), tParams, vParams), body) =>
+      DefDef(mods, newTermName(name), toTypeDefs(tParams), toValDefss(vParams),
+             TypeTree(), toTree(body))
+  }
+
+  def toValDefss(term: Term): List[List[ValDef]] = term match {
+    case "Some" @@ ("ParamClause" @@ (Lst(params@_*))) =>
+      List((params map toValDef).toList)
+    case @@("None") => Nil
+    case _ => sys.error(s"Can not transform ${term} to List[List[ValDef]]")
+  }
+
+  def toValDef(term: Term): ValDef = term match {
+    case "Param" @@ (annots, id, typed, rhs) =>
+      ValDef(toModifiers(annots), toTermName(id), toTree(typed), toTree(rhs))
+  }
+
+  def toTypeDefs(term: Term): List[TypeDef] = term match {
+    case @@("None") => Nil
+    case _ => sys.error(s"Can not transform ${term} to List[TypeDef]")
+  }
+
+  def toPackageDef(pkgs: Seq[Term], topStats: Seq[Term]): PackageDef = pkgs match {
+    case Nil => PackageDef(Ident(nme.EMPTY_PACKAGE_NAME), (topStats map toTree).toList)
     case _ => sys.error(s"Can not translate ${pkgs} for PackageDef")
   }
 
-  def toMods(mods: Term, annots: Term) = mods match {
+  def toModifiers(term: Term): Modifiers = term match {
+    case Lst() => Modifiers()
+    case _ => sys.error(s"Can not translate ${term} to Modifiers")
+  }
+
+  def toModifiers(mods: Term, annots: Term) = mods match {
     case @@("None") => Modifiers()
     case _ => sys.error(s"Can not translate ${mods} to Modifiers")
   }
 
-  def toModuleDef(mods: Term, annots: Term, name: Term, body: Term) = body match {
-    case @@("EmptyClassTemplateOpt") => IObjectDef(toMods(mods, annots), toTermName(name))
-    case _ => sys.error(s"Can not translate ${body} for ModuleDef")
+  def toTemplate(body: Term) = body match {
+    case @@("EmptyClassTemplateOpt") => None
+    case "TemplateBody" @@ (Lst(tplStatSemis@_*)) =>
+      Some(IUnfinishedTemplate(Nil, None, tplStatSemis map toTree:_*))
+    case _ => sys.error(s"Can not translate ${body} to Template")
   }
 
   def toTermName(name: Term) = name match {
@@ -51,14 +121,17 @@ trait SGLRParsers {
     case _ => sys.error(s"Can not translate ${name} to TermName")
   }
 
-  def toTemplate(body: Term) = body match {
-    case @@("EmptyClassTemplateOpt") =>
-  }
-
   object ToFullScalacASTTransformer extends Transformer {
     override def transform(tree: Tree): Tree = tree match {
-      case IObjectDef(mods, name) => ModuleDef(mods, name, defaultTemplate)
+      case IObjectDef(mods, name, None) => ModuleDef(mods, name, defaultTemplate)
+      case IObjectDef(mods, name, Some(t)) => ModuleDef(mods, name, toTemplate(t))
       case _ => super.transform(tree)
+    }
+
+    def toTemplate(v: IUnfinishedTemplate) = v match {
+      case IUnfinishedTemplate(Nil, None, stats@_*) =>
+        Template(List(scalaAnyRefConstr), emptyValDef, (defaultInit +: stats).toList)
+      case _ => sys.error(s"Can not finish ${v}")
     }
   }
 
@@ -66,7 +139,7 @@ trait SGLRParsers {
     def parse(): Tree = {
       val stratego_term = parser.parse(unit.source)
       val wrapped_term = Term(stratego_term)
-      val iScalacAST = toIScalacAST(wrapped_term)
+      val iScalacAST = toTree(wrapped_term)
       val fullyTransformed = ToFullScalacASTTransformer.transform(iScalacAST)
       fullyTransformed
     }
