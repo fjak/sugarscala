@@ -1,0 +1,13 @@
+#!/usr/bin/bash
+
+function join() {
+    local IFS=$1
+    shift
+    echo "$*"
+}
+
+base=$(dirname "$0")
+
+cp="$(join ':' "$base"/lib/extra/*.jar):$(join ':' "$base"/build/asm/classes):$(join ':' "$base"/build/quick/classes/*)"
+
+java -classpath "$cp" -Dscala.usejavacp=true scala.tools.nsc.Main "$@"
