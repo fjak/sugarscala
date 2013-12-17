@@ -25,7 +25,7 @@ trait SGLRParsers {
   case class IObjectDef(mods: Modifiers, name: TermName, tpl: Option[IUnfinishedTemplate]) extends Tree
 
   def toTree(term: Term): Tree = term match {
-    case "CompilationUnit" @@ (Lst(pkgs@_*), Lst(topStats@_*)) => toPackageDef(pkgs, topStats)
+    case "CompilationUnit" @@ (pkgs, topStats) => toPackageDef(pkgs, topStats)
 
     case "TopStatSemi" @@ (topStat, _) => toTree(topStat)
 
@@ -94,9 +94,20 @@ trait SGLRParsers {
     case _ => sys.error(s"Can not transform ${term} to List[TypeDef]")
   }
 
-  def toPackageDef(pkgs: Seq[Term], topStats: Seq[Term]): PackageDef = pkgs match {
-    case Nil => PackageDef(Ident(nme.EMPTY_PACKAGE_NAME), (topStats map toTree).toList)
-    case _ => sys.error(s"Can not translate ${pkgs} for PackageDef")
+  def toPackageDef(pkgs: Term, topStats: Term): PackageDef = pkgs match {
+    case Lst() => PackageDef(Ident(nme.EMPTY_PACKAGE_NAME), toTrees(topStats))
+    case Lst("PackageDeclaration" @@ (id, _)) =>
+      PackageDef(toRefTree(id), toTrees(topStats))
+    case _ => sys.error(s"Can not translate ${pkgs} to PackageDef")
+  }
+
+  def toRefTree(term: Term): RefTree = term match {
+    case "Id" @@ Str(name) => Ident(name)
+    case "QualId" @@ (Lst(id)) => toRefTree(id)
+    case "QualId" @@ (Lst(id, ids@_*)) => ids.foldLeft(toRefTree(id)) { (b,a) =>
+      Select(b, toTermName(a))
+    }
+    case _ => sys.error(s"Can not translate ${term} to RefTree")
   }
 
   def toModifiers(term: Term): Modifiers = term match {
