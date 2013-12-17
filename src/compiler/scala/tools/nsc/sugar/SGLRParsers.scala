@@ -57,6 +57,10 @@ trait SGLRParsers {
 
     case t @ @@("WildcardImportExpr", _*) => toImport(t)
 
+    case t @ @@("SelectorsImportExpr", _*) => toImport(t)
+
+    case "StableId" @@ (qid, select) => Select(toTree(qid), toTermName(select))
+
     case Lst(t, ts@_*) => ts.foldLeft(toTree(t)) {(b,a) => Select(b, toTermName(a))}
 
     case Str(name) => Ident(name)
@@ -79,10 +83,12 @@ trait SGLRParsers {
   }
 
   def toImport(term: Term): Import = term match {
-    case "WildcardImportExpr" @@ ("StableId" @@ (ids, id)) =>
-      Import(Select(toTree(ids), toTermName(id)), ImportSelector.wildList)
+    case "WildcardImportExpr" @@ sid =>
+      Import(toTree(sid), ImportSelector.wildList)
     case "ImportExpr" @@ t => toImport(t)
     case "StableId" @@ (t, s) => Import(toTree(t), toImportSelectors(s))
+    case "SelectorsImportExpr" @@ (sid, selects) =>
+      Import(toTree(sid), toImportSelectors(selects))
     case _ => sys.error(s"Can not transform ${term} to Import")
   }
 
@@ -91,7 +97,16 @@ trait SGLRParsers {
       val typName = newTypeName(name)
       List(ImportSelector(typName, -1, typName, -1))
     }
+    case "ImportSelectors" @@ Lst(t@_*) => (t map toImportSelector).toList
     case _ => sys.error(s"Can not transform ${term} to ImportSelectors")
+  }
+
+  def toImportSelector(term: Term): ImportSelector = term match {
+    case "ImportSelector" @@ t => {
+      val name = toTermName(t)
+      ImportSelector(name, -1, name, -1)
+    }
+    case _ => sys.error(s"Can not transform ${term} to ImportSelector")
   }
 
   def toDefDef(mods: Modifiers, funDef: Term): DefDef = funDef match {
