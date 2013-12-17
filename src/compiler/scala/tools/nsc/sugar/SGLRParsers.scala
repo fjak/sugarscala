@@ -55,6 +55,8 @@ trait SGLRParsers {
 
     case t @ @@("ImportExpr", _*) => toImport(t)
 
+    case t @ @@("WildcardImportExpr", _*) => toImport(t)
+
     case Lst(t, ts@_*) => ts.foldLeft(toTree(t)) {(b,a) => Select(b, toTermName(a))}
 
     case Str(name) => Ident(name)
@@ -77,6 +79,8 @@ trait SGLRParsers {
   }
 
   def toImport(term: Term): Import = term match {
+    case "WildcardImportExpr" @@ ("StableId" @@ (ids, id)) =>
+      Import(Select(toTree(ids), toTermName(id)), ImportSelector.wildList)
     case "ImportExpr" @@ t => toImport(t)
     case "StableId" @@ (t, s) => Import(toTree(t), toImportSelectors(s))
     case _ => sys.error(s"Can not transform ${term} to Import")
