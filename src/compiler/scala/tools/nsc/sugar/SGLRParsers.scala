@@ -41,13 +41,6 @@ trait SGLRParsers {
 
     case @@("None") => EmptyTree
 
-    case "ParamTyped" @@ (t) => toTree(t)
-
-    case "ParameterizedType" @@ (tpt, targs) =>
-      AppliedTypeTree(toTree(tpt), toTrees(targs))
-
-    case "Type" @@ ("Id" @@ (Str(name))) => Ident(newTypeName(name))
-
     case "BlockExpr" @@ t => toTree(t)
 
     case "Block" @@ (t) => Block(toTrees(t):_*)
@@ -64,7 +57,6 @@ trait SGLRParsers {
   }
 
   def toTrees(term: Term): List[Tree] = term match {
-    case "TypeArgs" @@ (Lst(ts@_*)) => (ts map toTree).toList
     case Lst(ts@_*) => (ts map toTree).toList
     case "ArgumentExprs" @@ t => toTrees(t)
     case "Some" @@ t => toTrees(t)
@@ -83,9 +75,21 @@ trait SGLRParsers {
     case _ => sys.error(s"Can not translate ${funDef} to DefDef")
   }
 
-  def toTypeTree(term: Term): TypeTree = term match {
+  def toTypeTree(term: Term): Tree = term match {
     case @@("None") => TypeTree()
+    case "Some" @@ (t) => toTypeTree(t)
+    case "Typed" @@ t => toTypeTree(t)
+    case "Type" @@ t => toTypeTree(t)
+    case "Id" @@ Str(name) => Ident(newTypeName(name))
+    case "ParamTyped" @@ (t) => toTypeTree(t)
+    case "ParameterizedType" @@ (tpt, targs) =>
+      AppliedTypeTree(toTypeTree(tpt), toTypeTrees(targs))
     case _ => sys.error(s"Can not translate ${term} to TypeTree")
+  }
+
+  def toTypeTrees(term: Term): List[Tree] = term match {
+    case "TypeArgs" @@ (Lst(ts@_*)) => (ts map toTypeTree).toList
+    case _ => sys.error(s"Can not translate ${term} to TypeTrees")
   }
 
   def toValDefss(term: Term): List[List[ValDef]] = term match {
@@ -97,7 +101,7 @@ trait SGLRParsers {
 
   def toValDef(term: Term): ValDef = term match {
     case "Param" @@ (annots, id, typed, rhs) =>
-      ValDef(toModifiers(annots), toTermName(id), toTree(typed), toTree(rhs))
+      ValDef(toModifiers(annots), toTermName(id), toTypeTree(typed), toTree(rhs))
   }
 
   def toTypeDefs(term: Term): List[TypeDef] = term match {
