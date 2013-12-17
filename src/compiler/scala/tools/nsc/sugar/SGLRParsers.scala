@@ -21,9 +21,9 @@ trait SGLRParsers {
   val scala_tbl = ParseTableManager.loadFromStream(scala_tbl_stream)
   val parser = SGLRParser
 
-  case class IUnfinishedTemplate(parents: Seq[Tree], self: Option[ValDef], body: Tree*) extends Tree
-  case class IObjectDef(mods: Modifiers, name: TermName, tpl: Option[IUnfinishedTemplate]) extends Tree
-  case class IClassDef(mods: Modifiers, name: TypeName, tparams: List[TypeDef], impl: Option[IUnfinishedTemplate]) extends Tree
+  case class IUnfinishedTemplate(parents: List[Tree], self: Option[ValDef], body: Tree*) extends Tree
+  case class IObjectDef(mods: Modifiers, name: TermName, tpl: Option[Tree]) extends Tree
+  case class IClassDef(mods: Modifiers, name: TypeName, tparams: List[TypeDef], impl: Option[Tree]) extends Tree
 
   def toTree(term: Term): Tree = term match {
     case "CompilationUnit" @@ (Lst(pkgs@_*), topStats) => toPackageDef(pkgs.toList, topStats)
@@ -71,6 +71,10 @@ trait SGLRParsers {
 
     case Str(name) => Ident(name)
 
+    case "Constr" @@ (typ, args) => toTypeTree(typ)
+
+    case "ExprTemplateStat" @@ t => toTree(t)
+
     case _ => sys.error(s"Can not translate term ${term} to Tree")
   }
 
@@ -85,6 +89,8 @@ trait SGLRParsers {
     case "Some" @@ t => toTrees(t)
     case @@("None") => Nil
     case "Exprs" @@ t => toTrees(t)
+    case "ClassParents" @@ (constr, annots) => toTree(constr) :: toTrees(annots)
+    case "TemplateBody" @@ tplStatSemis => toTrees(tplStatSemis)
     case _ => sys.error(s"Can not transform ${term} to List[Tree]")
   }
 
@@ -192,10 +198,13 @@ trait SGLRParsers {
     Modifiers()
   }
 
-  def toTemplate(body: Term) = body match {
+  def toTemplate(body: Term): Option[Tree] = body match {
     case @@("EmptyClassTemplateOpt") => None
-    case "TemplateBody" @@ (Lst(tplStatSemis@_*)) =>
-      Some(IUnfinishedTemplate(Nil, None, tplStatSemis map toTree:_*))
+    case "TemplateBody" @@ (tplStatSemis) =>
+      Some(IUnfinishedTemplate(Nil, None, toTrees(tplStatSemis):_*))
+    case "ClassClassTemplateOpt" @@ t => toTemplate(t)
+    case "ClassTemplate" @@ (earlyDefs, parents, body) =>
+      Some(IUnfinishedTemplate(toTrees(parents), None, toTrees(body):_*))
     case _ => sys.error(s"Can not translate ${body} to Template")
   }
 
@@ -219,10 +228,12 @@ trait SGLRParsers {
       case _ => super.transform(tree)
     }
 
-    def toTemplate(v: IUnfinishedTemplate) = v match {
+    def toTemplate(t: Tree) = t match {
       case IUnfinishedTemplate(Nil, None, stats@_*) =>
         Template(List(scalaAnyRefConstr), emptyValDef, (defaultInit +: stats).toList)
-      case _ => sys.error(s"Can not finish ${v}")
+      case IUnfinishedTemplate(parents, None, stats@_*) =>
+        Template(parents, emptyValDef, (defaultInit +: stats).toList)
+      case _ => sys.error(s"Can not finish ${t}")
     }
   }
 
