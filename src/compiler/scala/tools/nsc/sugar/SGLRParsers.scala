@@ -48,6 +48,8 @@ trait SGLRParsers {
 
     case "Type" @@ ("Id" @@ (Str(name))) => Ident(newTypeName(name))
 
+    case "BlockExpr" @@ t => toTree(t)
+
     case "Block" @@ (t) => Block(toTrees(t):_*)
 
     case "BlockStatSemi" @@ (t, _) => toTree(t)
@@ -72,9 +74,18 @@ trait SGLRParsers {
   }
 
   def toDefDef(mods: Modifiers, funDef: Term): DefDef = funDef match {
-    case "ProcDef" @@ ("FunSig" @@ ("Id" @@ Str(name), tParams, vParams), body) =>
-      DefDef(mods, newTermName(name), toTypeDefs(tParams), toValDefss(vParams),
+    case "ProcDef" @@ ("FunSig" @@ (id, tParams, vParams), body) =>
+      DefDef(mods, toTermName(id), toTypeDefs(tParams), toValDefss(vParams),
              TypeTree(), toTree(body))
+    case "FunDef" @@ ("FunSig" @@ (id, tParams, vParams), retType, body) =>
+      DefDef(mods, toTermName(id), toTypeDefs(tParams), toValDefss(vParams),
+             toTypeTree(retType), toTree(body))
+    case _ => sys.error(s"Can not translate ${funDef} to DefDef")
+  }
+
+  def toTypeTree(term: Term): TypeTree = term match {
+    case @@("None") => TypeTree()
+    case _ => sys.error(s"Can not translate ${term} to TypeTree")
   }
 
   def toValDefss(term: Term): List[List[ValDef]] = term match {
@@ -128,7 +139,7 @@ trait SGLRParsers {
     case _ => sys.error(s"Can not translate ${body} to Template")
   }
 
-  def toTermName(name: Term) = name match {
+  def toTermName(name: Term): TermName = name match {
     case "Id" @@ Str(name) => name
     case _ => sys.error(s"Can not translate ${name} to TermName")
   }
