@@ -1,0 +1,3 @@
+package clazz
+
+class Simple

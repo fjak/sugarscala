@@ -23,6 +23,7 @@ trait SGLRParsers {
 
   case class IUnfinishedTemplate(parents: Seq[Tree], self: Option[ValDef], body: Tree*) extends Tree
   case class IObjectDef(mods: Modifiers, name: TermName, tpl: Option[IUnfinishedTemplate]) extends Tree
+  case class IClassDef(mods: Modifiers, name: TypeName, tparams: List[TypeDef], impl: Option[IUnfinishedTemplate]) extends Tree
 
   def toTree(term: Term): Tree = term match {
     case "CompilationUnit" @@ (Lst(pkgs@_*), topStats) => toPackageDef(pkgs.toList, topStats)
@@ -33,6 +34,11 @@ trait SGLRParsers {
 
     case "TopTmplDef" @@ (mods, annots, "Object" @@ ("ObjectDef" @@ (name, body))) =>
       IObjectDef(toModifiers(mods, annots), toTermName(name), toTemplate(body))
+
+    case "TopTmplDef" @@
+           (mods, annots, "Class" @@
+              ("ClassDef" @@ (morphism, constrAnnots, accessMods, classParamClauses, tplOpt))) =>
+      IClassDef(toModifiers(mods, annots, accessMods), toTypeName(morphism), toTypeDefs(morphism), toTemplate(tplOpt))
 
     case "DefTemplateStat" @@ (mods, annots, "FunDefDef" @@ funDef) =>
       toDefDef(toModifiers(mods, annots), funDef)
@@ -150,6 +156,7 @@ trait SGLRParsers {
 
   def toTypeDefs(term: Term): List[TypeDef] = term match {
     case @@("None") => Nil
+    case "Id" @@ _ => Nil
     case _ => sys.error(s"Can not transform ${term} to List[TypeDef]")
   }
 
@@ -180,6 +187,11 @@ trait SGLRParsers {
     case _ => sys.error(s"Can not translate ${mods} to Modifiers")
   }
 
+  def toModifiers(mods: Term, annots: Term, accessMods: Term) = {
+    // TODO: implement
+    Modifiers()
+  }
+
   def toTemplate(body: Term) = body match {
     case @@("EmptyClassTemplateOpt") => None
     case "TemplateBody" @@ (Lst(tplStatSemis@_*)) =>
@@ -193,10 +205,17 @@ trait SGLRParsers {
     case _ => sys.error(s"Can not translate ${name} to TermName")
   }
 
+  def toTypeName(term: Term): TypeName = term match {
+    case "Id" @@ t => toTypeName(t)
+    case Str(s) => newTypeName(s)
+    case _ => sys.error(s"Can not translate ${term} to TypeName")
+  }
+
   object ToFullScalacASTTransformer extends Transformer {
     override def transform(tree: Tree): Tree = tree match {
       case IObjectDef(mods, name, None) => ModuleDef(mods, name, defaultTemplate)
       case IObjectDef(mods, name, Some(t)) => ModuleDef(mods, name, toTemplate(t))
+      case IClassDef(mods, name, tparams, None) => ClassDef(mods, name, tparams, defaultTemplate)
       case _ => super.transform(tree)
     }
 
