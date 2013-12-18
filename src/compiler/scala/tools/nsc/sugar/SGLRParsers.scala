@@ -16,6 +16,10 @@ trait SGLRParsers {
   import global._
   import treeBuilder.{global => _, _}
 
+  def unescape(s: String): String = {
+    s.drop(1).dropRight(1).replaceAllLiterally("""\"""", "\"")
+  }
+
   val scala_tbl_stream =
     getClass.getResourceAsStream("/scala/tools/nsc/sugar/Scala.tbl")
   val scala_tbl = ParseTableManager.loadFromStream(scala_tbl_stream)
@@ -57,7 +61,7 @@ trait SGLRParsers {
 
     case "Id" @@ Str(name) => Ident(name)
 
-    case "String" @@ Str(s) => Literal(Constant(s))
+    case "String" @@ Str(s) => Literal(Constant(unescape(s)))
 
     case "Int" @@ Str(s) => Literal(Constant(s.toInt))
 
@@ -84,6 +88,10 @@ trait SGLRParsers {
 
     case "InfixExpr" @@ (lhs, op, rhs) =>
       Apply(Select(toTree(lhs), toTermName(op).encode), List(toTree(rhs)))
+
+    case "PostfixExpr" @@ (arg, op) => Select(toTree(arg), toTermName(op).encode)
+
+    case "DesignatorExpr" @@ (t, sel) => Select(toTree(t), toTermName(sel))
 
     case _ => sys.error(s"Can not translate term ${term} to Tree")
   }
