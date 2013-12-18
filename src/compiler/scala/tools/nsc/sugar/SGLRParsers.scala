@@ -10,6 +10,7 @@ import java.io.File
 import scala.reflect.internal.util.SourceFile
 import java.io.FileReader
 import java.io.InputStream
+import scala.reflect.internal.ModifierFlags
 
 trait SGLRParsers {
   val global : Global
@@ -99,6 +100,11 @@ trait SGLRParsers {
 
     case "DefTemplateStat" @@ (mods, annots, "ValPatDef" @@ ("PatDef" @@ (Lst(name), typ, expr))) =>
       ValDef(toModifiers(mods, annots), toTermName(name), toTypeTree(typ), toTree(expr))
+
+    case "DefTemplateStat" @@ (mods, annots, "VarPatDef" @@ ("PatDef" @@ (Lst(name), typ, expr))) =>
+      ValDef(toModifiers(mods, annots) | ModifierFlags.MUTABLE, toTermName(name), toTypeTree(typ), toTree(expr))
+
+    case "AssignmentExpr" @@ (lhs, rhs) => Assign(toTree(lhs), toTree(rhs))
 
     case "Path" @@ l => toTree(l)
 
