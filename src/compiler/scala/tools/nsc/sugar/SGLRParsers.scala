@@ -97,6 +97,9 @@ trait SGLRParsers {
 
     case "FunExpr" @@ (bindings, body) => Function(toValDefs(bindings), toTree(body))
 
+    case "DefTemplateStat" @@ (mods, annots, "ValPatDef" @@ ("PatDef" @@ (Lst(name), typ, expr))) =>
+      ValDef(toModifiers(mods, annots), toTermName(name), toTypeTree(typ), toTree(expr))
+
     case _ => sys.error(s"Can not translate term ${term} to Tree")
   }
 
