@@ -59,6 +59,8 @@ trait SGLRParsers {
 
     case "String" @@ Str(s) => Literal(Constant(s))
 
+    case "Int" @@ Str(s) => Literal(Constant(s.toInt))
+
     case t @ @@("ImportExpr", _*) => toImport(t)
 
     case t @ @@("WildcardImportExpr", _*) => toImport(t)
@@ -74,6 +76,9 @@ trait SGLRParsers {
     case "Constr" @@ (typ, args) => toTypeTree(typ)
 
     case "ExprTemplateStat" @@ t => toTree(t)
+
+    case "InfixExpr" @@ (lhs, op, rhs) =>
+      Apply(Select(toTree(lhs), toTermName(op).encode), List(toTree(rhs)))
 
     case _ => sys.error(s"Can not translate term ${term} to Tree")
   }
