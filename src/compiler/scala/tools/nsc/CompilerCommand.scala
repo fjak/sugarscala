@@ -25,7 +25,7 @@ class CompilerCommand(arguments: List[String], val settings: Settings) {
   def files = processArgumentsResult._2
 
   /** The name of the command */
-  def cmdName = "scalac"
+  def cmdName = "sugsc"
 
   private def explainAdvanced = "\n" + """
     |-- Notes on option parsing --
@@ -78,7 +78,7 @@ class CompilerCommand(arguments: List[String], val settings: Settings) {
       Some(label + " options include:")
     ).flatten mkString "\n"
 
-    prefix + createUsageMsg(cond)
+    "*** SugarScala Extension for Scala compiler ***\n" + prefix + createUsageMsg(cond)
   }
 
   /** Messages explaining usage and options */

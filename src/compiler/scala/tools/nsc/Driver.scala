@@ -8,7 +8,7 @@ abstract class Driver {
   
   val prompt = residentPromptString
 
-  val versionMsg = "Scala compiler " +
+  val versionMsg = "SugarScala compiler, based on the Scala compiler " +
     versionString + " -- " +
     copyrightString
 
@@ -17,7 +17,7 @@ abstract class Driver {
   protected var settings: Settings = _
 
   protected def scalacError(msg: String) {
-    reporter.error(FakePos("scalac"), msg + "\n  scalac -help  gives more information")
+    reporter.error(FakePos("sugsc"), msg + "\n  sugsc -help  gives more information")
   }
 
   protected def processSettingsHook(): Boolean = true

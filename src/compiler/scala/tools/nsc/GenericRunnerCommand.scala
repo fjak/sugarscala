@@ -21,7 +21,7 @@ extends CompilerCommand(args, settings) {
 
   /** name of the associated compiler command */
   override def cmdName = "scala"
-  def compCmdName = "scalac"
+  def compCmdName = "sugsc"
 
   // change CompilerCommand behavior
   override def shouldProcessArguments: Boolean = false
