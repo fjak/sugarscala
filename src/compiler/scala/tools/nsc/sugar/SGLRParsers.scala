@@ -93,6 +93,10 @@ trait SGLRParsers {
 
     case "DesignatorExpr" @@ (t, sel) => Select(toTree(t), toTermName(sel))
 
+    case "TupleExpr" @@ (Lst(t)) => toTree(t)
+
+    case "FunExpr" @@ (bindings, body) => Function(toValDefs(bindings), toTree(body))
+
     case _ => sys.error(s"Can not translate term ${term} to Tree")
   }
 
@@ -173,9 +177,17 @@ trait SGLRParsers {
     case _ => sys.error(s"Can not transform ${term} to List[List[ValDef]]")
   }
 
+  def toValDefs(term: Term): List[ValDef] = term match {
+    case "Bindings" @@ (Lst(bindings@_*)) => (bindings.toList map toValDef)
+    case _ => sys.error(s"Can not transform ${term} to List[ValDef]")
+  }
+
   def toValDef(term: Term): ValDef = term match {
     case "Param" @@ (annots, id, typed, rhs) =>
       ValDef(toModifiers(annots), toTermName(id), toTypeTree(typed), toTree(rhs))
+    case "Binding" @@ (name, typ) =>
+      ValDef(Modifiers(), toTermName(name), toTypeTree(typ), EmptyTree)
+    case _ => sys.error(s"Can not transform ${term} to ValDef")
   }
 
   def toTypeDefs(term: Term): List[TypeDef] = term match {
