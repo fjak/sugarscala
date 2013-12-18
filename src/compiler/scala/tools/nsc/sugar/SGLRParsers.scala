@@ -61,6 +61,8 @@ trait SGLRParsers {
 
     case "Int" @@ Str(s) => Literal(Constant(s.toInt))
 
+    case @@("False") => Literal(Constant(false))
+
     case t @ @@("ImportExpr", _*) => toImport(t)
 
     case t @ @@("WildcardImportExpr", _*) => toImport(t)
@@ -76,6 +78,9 @@ trait SGLRParsers {
     case "Constr" @@ (typ, args) => toTypeTree(typ)
 
     case "ExprTemplateStat" @@ t => toTree(t)
+
+    case "PrefixExpr" @@ (op, arg) =>
+      Select(toTree(arg), toTermName(op).encode.prepend("unary_"))
 
     case "InfixExpr" @@ (lhs, op, rhs) =>
       Apply(Select(toTree(lhs), toTermName(op).encode), List(toTree(rhs)))
