@@ -100,6 +100,8 @@ trait SGLRParsers {
     case "DefTemplateStat" @@ (mods, annots, "ValPatDef" @@ ("PatDef" @@ (Lst(name), typ, expr))) =>
       ValDef(toModifiers(mods, annots), toTermName(name), toTypeTree(typ), toTree(expr))
 
+    case "Path" @@ l => toTree(l)
+
     case _ => sys.error(s"Can not translate term ${term} to Tree")
   }
 
