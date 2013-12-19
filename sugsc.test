@@ -1,0 +1,19 @@
+#!/bin/bash
+
+cd $(dirname "$BASH_SOURCE")
+
+mkdir -p bin.scalac
+mkdir -p bin.sugsc
+
+rm -fr bin.scalac/*
+rm -fr bin.sugsc/*
+
+scalac -d bin.scalac "$@"
+./sugsc -d bin.sugsc "$@"
+
+shopt -s globstar
+
+javap -s -c -p bin.scalac/**/*.class > scalac.dump
+javap -s -c -p bin.sugsc/**/*.class > sugsc.dump
+
+sdiff -s {scalac,sugsc}.dump
