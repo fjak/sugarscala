@@ -54,6 +54,9 @@ trait SGLRParsers {
 
     case "BlockExpr" @@ t => toTree(t)
 
+    // Remove block having only one statement
+    case "Block" @@ (Lst(t)) => toTree(t)
+
     case "Block" @@ (t) => Block(toTrees(t):_*)
 
     case "BlockStatSemi" @@ (t, _) => toTree(t)
@@ -111,6 +114,8 @@ trait SGLRParsers {
     case "IfExpr" @@ (cond, then) => If(toTree(cond), toTree(then), EmptyTree)
 
     case "IfElseExpr" @@ (cond, then, els) => If(toTree(cond), toTree(then), toTree(els))
+
+    case "MatchExpr" @@ (t, clauses) => Match(toTree(t), toCaseDefs(clauses))
 
     case _ => sys.error(s"Can not translate term ${term} to Tree")
   }
@@ -241,6 +246,23 @@ trait SGLRParsers {
   def toModifiers(mods: Term, annots: Term, accessMods: Term) = {
     // TODO: implement
     Modifiers()
+  }
+
+  def toCaseDefs(term: Term): List[CaseDef] = term match {
+    case Lst(clauses@_*) => clauses.toList map toCaseDef
+    case _ => sys.error(s"Can not translate ${term} to List[CaseDef]")
+  }
+
+  def toCaseDef(term: Term): CaseDef = term match {
+    case "CaseClause" @@ (pat, @@("None"), blk) =>
+      CaseDef(toPatternTree(pat), EmptyTree, toTree(blk))
+    case _ => sys.error(s"Can not translate ${term} to CaseDef")
+  }
+
+  def toPatternTree(term: Term): Tree = term match {
+    case "LiteralPattern" @@ lit => toTree(lit)
+    case @@("WildcardPattern") => Ident(nme.WILDCARD)
+    case _ => sys.error(s"Can not translate ${term} to Pattern")
   }
 
   def toTemplate(body: Term): Option[Tree] = body match {
