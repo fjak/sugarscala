@@ -108,6 +108,10 @@ trait SGLRParsers {
 
     case "Path" @@ l => toTree(l)
 
+    case "IfExpr" @@ (cond, then) => If(toTree(cond), toTree(then), EmptyTree)
+
+    case "IfElseExpr" @@ (cond, then, els) => If(toTree(cond), toTree(then), toTree(els))
+
     case _ => sys.error(s"Can not translate term ${term} to Tree")
   }
 
