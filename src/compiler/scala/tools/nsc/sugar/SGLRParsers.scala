@@ -10,7 +10,7 @@ import java.io.File
 import scala.reflect.internal.util.SourceFile
 import java.io.FileReader
 import java.io.InputStream
-import scala.reflect.internal.ModifierFlags
+import scala.reflect.internal.{ModifierFlags => Flags}
 
 trait SGLRParsers {
   val global : Global
@@ -26,9 +26,9 @@ trait SGLRParsers {
   val scala_tbl = ParseTableManager.loadFromStream(scala_tbl_stream)
   val parser = SGLRParser
 
-  case class IUnfinishedTemplate(parents: List[Tree], self: Option[ValDef], body: Tree*) extends Tree
+  case class IUnfinishedTemplate(parents: List[Tree], self: ValDef, body: Tree*) extends Tree
   case class IObjectDef(mods: Modifiers, name: TermName, tpl: Option[Tree]) extends Tree
-  case class IClassDef(mods: Modifiers, name: TypeName, tparams: List[TypeDef], impl: Option[Tree]) extends Tree
+  case class IClassDef(mods: Modifiers, name: TypeName, tparams: List[TypeDef], accessMods: Modifiers, vparamss: List[List[ValDef]], impl: Option[Tree]) extends Tree
 
   def toTree(term: Term): Tree = term match {
     case "CompilationUnit" @@ (Lst(pkgs@_*), topStats) => toPackageDef(pkgs.toList, topStats)
@@ -43,7 +43,7 @@ trait SGLRParsers {
     case "TopTmplDef" @@
            (mods, annots, "Class" @@
               ("ClassDef" @@ (morphism, constrAnnots, accessMods, classParamClauses, tplOpt))) =>
-      IClassDef(toModifiers(mods, annots, accessMods), toTypeName(morphism), toTypeDefs(morphism), toTemplate(tplOpt))
+      IClassDef(toModifiers(mods, annots), toTypeName(morphism), toTypeDefs(morphism), toModifiers(accessMods), toValDefss(classParamClauses), toTemplate(tplOpt))
 
     case "DefTemplateStat" @@ (mods, annots, "FunDefDef" @@ funDef) =>
       toDefDef(toModifiers(mods, annots), funDef)
@@ -105,7 +105,7 @@ trait SGLRParsers {
       ValDef(toModifiers(mods, annots), toTermName(name), toTypeTree(typ), toTree(expr))
 
     case "DefTemplateStat" @@ (mods, annots, "VarPatDef" @@ ("PatDef" @@ (Lst(name), typ, expr))) =>
-      ValDef(toModifiers(mods, annots) | ModifierFlags.MUTABLE, toTermName(name), toTypeTree(typ), toTree(expr))
+      ValDef(toModifiers(mods, annots) | Flags.MUTABLE, toTermName(name), toTypeTree(typ), toTree(expr))
 
     case "AssignmentExpr" @@ (lhs, rhs) => Assign(toTree(lhs), toTree(rhs))
 
@@ -191,18 +191,22 @@ trait SGLRParsers {
   }
 
   def toValDefss(term: Term): List[List[ValDef]] = term match {
-    case "Some" @@ ("ParamClause" @@ (Lst(params@_*))) =>
-      List((params map toValDef).toList)
     case @@("None") => Nil
+    case "Some" @@ t => toValDefss(t)
+    case "ParamClause" @@ t => List(toValDefs(t))
+    case "ClassParamClause" @@ t => List(toValDefs(t))
     case _ => sys.error(s"Can not transform ${term} to List[List[ValDef]]")
   }
 
   def toValDefs(term: Term): List[ValDef] = term match {
-    case "Bindings" @@ (Lst(bindings@_*)) => (bindings.toList map toValDef)
+    case Lst(params@_*) => params.toList map toValDef
+    case "Bindings" @@ l => toValDefs(l)
     case _ => sys.error(s"Can not transform ${term} to List[ValDef]")
   }
 
   def toValDef(term: Term): ValDef = term match {
+    case "ClassParam" @@ (annots, id, typed, rhs) =>
+      ValDef(toModifiers(annots) | Flags.PrivateLocal | Flags.PARAM | Flags.PARAMACCESSOR, toTermName(id), toTypeTree(typed), toTree(rhs))
     case "Param" @@ (annots, id, typed, rhs) =>
       ValDef(toModifiers(annots), toTermName(id), toTypeTree(typed), toTree(rhs))
     case "Binding" @@ (name, typ) =>
@@ -235,18 +239,11 @@ trait SGLRParsers {
 
   def toModifiers(term: Term): Modifiers = term match {
     case Lst() => Modifiers()
+    case @@("None") => Modifiers()
     case _ => sys.error(s"Can not translate ${term} to Modifiers")
   }
 
-  def toModifiers(mods: Term, annots: Term) = mods match {
-    case @@("None") => Modifiers()
-    case _ => sys.error(s"Can not translate ${mods} to Modifiers")
-  }
-
-  def toModifiers(mods: Term, annots: Term, accessMods: Term) = {
-    // TODO: implement
-    Modifiers()
-  }
+  def toModifiers(mods: Term, annots: Term): Modifiers = toModifiers(mods)
 
   def toCaseDefs(term: Term): List[CaseDef] = term match {
     case Lst(clauses@_*) => clauses.toList map toCaseDef
@@ -268,10 +265,10 @@ trait SGLRParsers {
   def toTemplate(body: Term): Option[Tree] = body match {
     case @@("EmptyClassTemplateOpt") => None
     case "TemplateBody" @@ (tplStatSemis) =>
-      Some(IUnfinishedTemplate(Nil, None, toTrees(tplStatSemis):_*))
+      Some(IUnfinishedTemplate(Nil, emptyValDef, toTrees(tplStatSemis):_*))
     case "ClassClassTemplateOpt" @@ t => toTemplate(t)
     case "ClassTemplate" @@ (earlyDefs, parents, body) =>
-      Some(IUnfinishedTemplate(toTrees(parents), None, toTrees(body):_*))
+      Some(IUnfinishedTemplate(toTrees(parents), emptyValDef, toTrees(body):_*))
     case _ => sys.error(s"Can not translate ${body} to Template")
   }
 
@@ -291,14 +288,22 @@ trait SGLRParsers {
     override def transform(tree: Tree): Tree = tree match {
       case IObjectDef(mods, name, None) => ModuleDef(mods, name, defaultTemplate)
       case IObjectDef(mods, name, Some(t)) => ModuleDef(mods, name, toTemplate(t))
-      case IClassDef(mods, name, tparams, None) => ClassDef(mods, name, tparams, defaultTemplate)
+      case IClassDef(mods, name, tparams, aMods, vparamss, impl) => ClassDef(mods, name, tparams, mkTemplate(impl, aMods, vparamss))
       case _ => super.transform(tree)
     }
 
+    def mkTemplate(impl: Option[Tree], aMods: Modifiers, vparamss: List[List[ValDef]]) = impl match {
+      case None =>
+        Template(List(scalaAnyRefConstr), emptyValDef, aMods, vparamss, ListOfNil, Nil, NoPosition)
+      case Some(IUnfinishedTemplate(parents, selfVal, stats@_*)) =>
+        Template(parents, selfVal, aMods, vparamss, Nil, stats.toList, NoPosition)
+      case _ => sys.error(s"Can not make template with impl: ${impl}, aMods: ${aMods}, vparamss: ${vparamss}")
+    }
+
     def toTemplate(t: Tree) = t match {
-      case IUnfinishedTemplate(Nil, None, stats@_*) =>
-        Template(List(scalaAnyRefConstr), emptyValDef, (defaultInit +: stats).toList)
-      case IUnfinishedTemplate(parents, None, stats@_*) =>
+      case IUnfinishedTemplate(Nil, self, stats@_*) =>
+        Template(List(scalaAnyRefConstr), self, (defaultInit +: stats).toList)
+      case IUnfinishedTemplate(parents, self, stats@_*) =>
         Template(parents, emptyValDef, (defaultInit +: stats).toList)
       case _ => sys.error(s"Can not finish ${t}")
     }
