@@ -26,7 +26,7 @@ trait SGLRParsers {
   val scala_tbl = ParseTableManager.loadFromStream(scala_tbl_stream)
   val parser = SGLRParser
 
-  case class IUnfinishedTemplate(parents: List[Tree], self: ValDef, body: Tree*) extends Tree
+  case class IUnfinishedTemplate(parents: List[Tree], attrss: List[List[Tree]], self: ValDef, body: Tree*) extends Tree
   case class IObjectDef(mods: Modifiers, name: TermName, tpl: Option[Tree]) extends Tree
   case class IClassDef(mods: Modifiers, name: TypeName, tparams: List[TypeDef], accessMods: Modifiers, vparamss: List[List[ValDef]], impl: Option[Tree]) extends Tree
 
@@ -83,8 +83,6 @@ trait SGLRParsers {
 
     case Str(name) => Ident(name)
 
-    case "Constr" @@ (typ, args) => toTypeTree(typ)
-
     case "ExprTemplateStat" @@ t => toTree(t)
 
     case "PrefixExpr" @@ (op, arg) =>
@@ -131,7 +129,6 @@ trait SGLRParsers {
     case "Some" @@ t => toTrees(t)
     case @@("None") => Nil
     case "Exprs" @@ t => toTrees(t)
-    case "ClassParents" @@ (constr, annots) => toTree(constr) :: toTrees(annots)
     case "TemplateBody" @@ tplStatSemis => toTrees(tplStatSemis)
     case _ => sys.error(s"Can not transform ${term} to List[Tree]")
   }
@@ -182,11 +179,14 @@ trait SGLRParsers {
     case "ParamTyped" @@ (t) => toTypeTree(t)
     case "ParameterizedType" @@ (tpt, targs) =>
       AppliedTypeTree(toTypeTree(tpt), toTypeTrees(targs))
+    case "Constr" @@ (typ, args) => toTypeTree(typ)
     case _ => sys.error(s"Can not translate ${term} to TypeTree")
   }
 
   def toTypeTrees(term: Term): List[Tree] = term match {
     case "TypeArgs" @@ (Lst(ts@_*)) => (ts map toTypeTree).toList
+    case "ClassParents" @@ (constr, annots) => toTypeTree(constr) :: toTypeTrees(annots)
+    case Lst() => Nil
     case _ => sys.error(s"Can not translate ${term} to TypeTrees")
   }
 
@@ -265,11 +265,19 @@ trait SGLRParsers {
   def toTemplate(body: Term): Option[Tree] = body match {
     case @@("EmptyClassTemplateOpt") => None
     case "TemplateBody" @@ (tplStatSemis) =>
-      Some(IUnfinishedTemplate(Nil, emptyValDef, toTrees(tplStatSemis):_*))
+      Some(IUnfinishedTemplate(Nil, ListOfNil, emptyValDef, toTrees(tplStatSemis):_*))
     case "ClassClassTemplateOpt" @@ t => toTemplate(t)
     case "ClassTemplate" @@ (earlyDefs, parents, body) =>
-      Some(IUnfinishedTemplate(toTrees(parents), emptyValDef, toTrees(body):_*))
+      Some(IUnfinishedTemplate(toTypeTrees(parents), toTreess(parents), emptyValDef, toTrees(body):_*))
     case _ => sys.error(s"Can not translate ${body} to Template")
+  }
+
+  def toTreess(term: Term): List[List[Tree]] = term match {
+    case @@("None") => ListOfNil
+    case "Some" @@ t => toTreess(t)
+    case "ClassParents" @@ ("Constr" @@ (_, args), _) => toTreess(args)
+    case "ArgumentExprs" @@ t => List(toTrees(t))
+    case _ => sys.error(s"Can not translate ${term} to List[List[Tree]]")
   }
 
   def toTermName(name: Term): TermName = name match {
@@ -295,15 +303,15 @@ trait SGLRParsers {
     def mkTemplate(impl: Option[Tree], aMods: Modifiers, vparamss: List[List[ValDef]]) = impl match {
       case None =>
         Template(List(scalaAnyRefConstr), emptyValDef, aMods, vparamss, ListOfNil, Nil, NoPosition)
-      case Some(IUnfinishedTemplate(parents, selfVal, stats@_*)) =>
-        Template(parents, selfVal, aMods, vparamss, Nil, stats.toList, NoPosition)
+      case Some(IUnfinishedTemplate(parents, attrs, selfVal, stats@_*)) =>
+        Template(parents, selfVal, aMods, vparamss, attrs, stats.toList, NoPosition)
       case _ => sys.error(s"Can not make template with impl: ${impl}, aMods: ${aMods}, vparamss: ${vparamss}")
     }
 
     def toTemplate(t: Tree) = t match {
-      case IUnfinishedTemplate(Nil, self, stats@_*) =>
+      case IUnfinishedTemplate(Nil, attrs, self, stats@_*) =>
         Template(List(scalaAnyRefConstr), self, (defaultInit +: stats).toList)
-      case IUnfinishedTemplate(parents, self, stats@_*) =>
+      case IUnfinishedTemplate(parents, attrs, self, stats@_*) =>
         Template(parents, emptyValDef, (defaultInit +: stats).toList)
       case _ => sys.error(s"Can not finish ${t}")
     }
