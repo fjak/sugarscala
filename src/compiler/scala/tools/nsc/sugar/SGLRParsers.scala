@@ -45,7 +45,7 @@ trait SGLRParsers {
               ("ClassDef" @@ (morphism, constrAnnots, accessMods, classParamClauses, tplOpt))) =>
       IClassDef(toModifiers(mods, annots), toTypeName(morphism), toTypeDefs(morphism), toModifiers(accessMods), toValDefss(classParamClauses), toTemplate(tplOpt))
 
-    case "DefTemplateStat" @@ (mods, annots, "FunDefDef" @@ funDef) =>
+    case "DefTemplateStat" @@ (annots, mods, "FunDefDef" @@ funDef) =>
       toDefDef(toModifiers(mods, annots), funDef)
 
     case "Some" @@ (t) => toTree(t)
@@ -99,10 +99,10 @@ trait SGLRParsers {
 
     case "FunExpr" @@ (bindings, body) => Function(toValDefs(bindings), toTree(body))
 
-    case "DefTemplateStat" @@ (mods, annots, "ValPatDef" @@ ("PatDef" @@ (Lst(name), typ, expr))) =>
+    case "DefTemplateStat" @@ (annots, mods, "ValPatDef" @@ ("PatDef" @@ (Lst(name), typ, expr))) =>
       ValDef(toModifiers(mods, annots), toTermName(name), toTypeTree(typ), toTree(expr))
 
-    case "DefTemplateStat" @@ (mods, annots, "VarPatDef" @@ ("PatDef" @@ (Lst(name), typ, expr))) =>
+    case "DefTemplateStat" @@ (annots, mods, "VarPatDef" @@ ("PatDef" @@ (Lst(name), typ, expr))) =>
       ValDef(toModifiers(mods, annots) | Flags.MUTABLE, toTermName(name), toTypeTree(typ), toTree(expr))
 
     case "AssignmentExpr" @@ (lhs, rhs) => Assign(toTree(lhs), toTree(rhs))
@@ -239,7 +239,9 @@ trait SGLRParsers {
 
   def toModifiers(term: Term): Modifiers = term match {
     case Lst() => Modifiers()
+    case Lst(mod, mods@_*) => mods.foldLeft(toModifiers(mod)) {(b, a) => b | toModifiers(a).flags}
     case @@("None") => Modifiers()
+    case @@("OverrideModifier") => Modifiers() | Flags.OVERRIDE
     case _ => sys.error(s"Can not translate ${term} to Modifiers")
   }
 

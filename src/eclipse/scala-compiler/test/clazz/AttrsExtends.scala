@@ -1,5 +1,5 @@
 package clazz
 
-class Foo(i: Int)
+class FooA(i: Int)
 
-class AttrsExtends(i: Int, s: String) extends Foo(i)
+class AttrsExtends(i: Int, s: String) extends FooA(i)
