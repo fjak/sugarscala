@@ -45,6 +45,11 @@ trait SGLRParsers {
               ("ClassDef" @@ (morphism, constrAnnots, accessMods, classParamClauses, tplOpt))) =>
       IClassDef(toModifiers(mods, annots), toTypeName(morphism), toTypeDefs(morphism), toModifiers(accessMods), toValDefss(classParamClauses), toTemplate(tplOpt))
 
+    case "TopTmplDef" @@
+           (mods, annots, "Trait" @@
+              ("TraitDef" @@ (id, typeParams, tplOpt))) =>
+      IClassDef(toModifiers(mods, annots) | Flags.TRAIT | Flags.ABSTRACT, toTypeName(id), toTypeDefs(typeParams), Modifiers() | Flags.TRAIT, ListOfNil, toTemplate(tplOpt))
+
     case "DefTemplateStat" @@ (annots, mods, "FunDefDef" @@ funDef) =>
       toDefDef(toModifiers(mods, annots), funDef)
 
@@ -266,6 +271,7 @@ trait SGLRParsers {
 
   def toTemplate(body: Term): Option[Tree] = body match {
     case @@("EmptyClassTemplateOpt") => None
+    case @@("EmptyTraitTemplateOpt") => None
     case "TemplateBody" @@ (tplStatSemis) =>
       Some(IUnfinishedTemplate(Nil, ListOfNil, emptyValDef, toTrees(tplStatSemis):_*))
     case "ClassClassTemplateOpt" @@ t => toTemplate(t)
