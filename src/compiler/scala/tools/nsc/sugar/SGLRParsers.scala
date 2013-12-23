@@ -195,6 +195,8 @@ trait SGLRParsers {
       AppliedTypeTree(toTypeTree(tpt), toTypeTrees(targs))
     case "Constr" @@ (typ, args) => toTypeTree(typ)
     case "WithAnnotType" @@ t => toTypeTree(t)
+    case "FunctionType" @@ (argtpes, restpe) =>
+      makeFunctionTypeTree(toTypeTrees(argtpes), toTypeTree(restpe))
     case _ => sys.error(s"Can not translate ${term} to TypeTree")
   }
 
@@ -203,6 +205,7 @@ trait SGLRParsers {
     case "ClassParents" @@ (parent, withs) => toTypeTree(parent) :: toTypeTrees(withs)
     case "TraitParents" @@ (parent, withs) => toTypeTree(parent) :: toTypeTrees(withs)
     case Lst(withs@_*) => withs.toList map toTypeTree
+    case t @ "Type" @@ _ => List(toTypeTree(t))
     case _ => sys.error(s"Can not translate ${term} to TypeTrees")
   }
 
@@ -210,6 +213,7 @@ trait SGLRParsers {
     case @@("None") => Nil
     case "Some" @@ t => toValDefss(t)
     case "ParamClause" @@ t => List(toValDefs(t))
+    case "ParamClauses" @@ ("ParamClause" @@ t, cls) => toValDefs(t) :: toValDefss(cls)
     case "ClassParamClause" @@ t => List(toValDefs(t))
     case _ => sys.error(s"Can not transform ${term} to List[List[ValDef]]")
   }
@@ -232,8 +236,28 @@ trait SGLRParsers {
 
   def toTypeDefs(term: Term): List[TypeDef] = term match {
     case @@("None") => Nil
+    case "Some" @@ t => toTypeDefs(t)
     case "Id" @@ _ => Nil
+    case "TypeParamClause" @@ lst => toTypeDefs(lst)
+    case Lst(defs@_*) => defs.toList map toTypeDef
     case _ => sys.error(s"Can not transform ${term} to List[TypeDef]")
+  }
+
+  def toTypeDef(term: Term): TypeDef = term match {
+    case "VariantTypeParam" @@ (Lst(), typeParam) => toTypeDef(typeParam)
+    case "TypeParam" @@ (id, tpc, lbt, ubt, Lst(), Lst()) =>
+      TypeDef(Modifiers() | Flags.PARAM, toTypeName(id), toTypeDefs(tpc), toTypeBoundsTree(lbt, ubt))
+    case _ => sys.error(s"Can not transform ${term} to TypeDef")
+  }
+
+  def toTypeBoundsTree(lbt: Term, ubt: Term): TypeBoundsTree = {
+    val lb = lbt match {
+      case @@("None") => rootScalaDot(tpnme.Nothing)
+    }
+    val ub = ubt match {
+      case @@("None") => rootScalaDot(tpnme.Any)
+    }
+    TypeBoundsTree(lb, ub)
   }
 
   def toPackageDef(pkgs: List[Term], topStats: Term): PackageDef = pkgs match {
