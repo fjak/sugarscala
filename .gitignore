@@ -53,3 +53,11 @@
 
 # Scala-IDE run-generated files
 /src/eclipse/scala-compiler/**/*.class
+
+# sugsc generated files
+/bin.sugsc/
+/bin.scalac/
+/sugsc.dump
+/scalac.dump
+
+// vim: set ts=4 sw=4 et:
