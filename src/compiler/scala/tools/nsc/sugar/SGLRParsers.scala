@@ -56,6 +56,9 @@ trait SGLRParsers {
     case "DefTemplateStat" @@ (annots, mods, "FunDefDef" @@ funDef) =>
       toDefDef(toModifiers(mods, annots), funDef)
 
+    case "DclTemplateStat" @@ (annots, mods, "FunDclDcl" @@ funDcl) =>
+      toDefDef(toModifiers(mods, annots), funDcl)
+
     case "Some" @@ (t) => toTree(t)
 
     case @@("None") => EmptyTree
@@ -175,6 +178,9 @@ trait SGLRParsers {
     case "FunDef" @@ ("FunSig" @@ (id, tParams, vParams), retType, body) =>
       DefDef(mods, toTermName(id), toTypeDefs(tParams), toValDefss(vParams),
              toTypeTree(retType), toTree(body))
+    case "FunDcl" @@ ("FunSig" @@ (id, tParams, vParams), retType) =>
+      DefDef(mods | Flags.DEFERRED, toTermName(id), toTypeDefs(tParams),
+             toValDefss(vParams), toTypeTree(retType), EmptyTree)
     case _ => sys.error(s"Can not translate ${funDef} to DefDef")
   }
 
@@ -188,13 +194,15 @@ trait SGLRParsers {
     case "ParameterizedType" @@ (tpt, targs) =>
       AppliedTypeTree(toTypeTree(tpt), toTypeTrees(targs))
     case "Constr" @@ (typ, args) => toTypeTree(typ)
+    case "WithAnnotType" @@ t => toTypeTree(t)
     case _ => sys.error(s"Can not translate ${term} to TypeTree")
   }
 
   def toTypeTrees(term: Term): List[Tree] = term match {
     case "TypeArgs" @@ (Lst(ts@_*)) => (ts map toTypeTree).toList
-    case "ClassParents" @@ (constr, annots) => toTypeTree(constr) :: toTypeTrees(annots)
-    case Lst() => Nil
+    case "ClassParents" @@ (parent, withs) => toTypeTree(parent) :: toTypeTrees(withs)
+    case "TraitParents" @@ (parent, withs) => toTypeTree(parent) :: toTypeTrees(withs)
+    case Lst(withs@_*) => withs.toList map toTypeTree
     case _ => sys.error(s"Can not translate ${term} to TypeTrees")
   }
 
@@ -278,7 +286,10 @@ trait SGLRParsers {
     case "TemplateBody" @@ (tplStatSemis) =>
       Some(IUnfinishedTemplate(Nil, ListOfNil, emptyValDef, toTrees(tplStatSemis):_*))
     case "ClassClassTemplateOpt" @@ t => toTemplate(t)
+    case "TraitTraitTemplateOpt" @@ t => toTemplate(t)
     case "ClassTemplate" @@ (earlyDefs, parents, body) =>
+      Some(IUnfinishedTemplate(toTypeTrees(parents), toTreess(parents), emptyValDef, toTrees(body):_*))
+    case "TraitTemplate" @@ (earlyDefs, parents, body) =>
       Some(IUnfinishedTemplate(toTypeTrees(parents), toTreess(parents), emptyValDef, toTrees(body):_*))
     case _ => sys.error(s"Can not translate ${body} to Template")
   }
@@ -287,6 +298,7 @@ trait SGLRParsers {
     case @@("None") => ListOfNil
     case "Some" @@ t => toTreess(t)
     case "ClassParents" @@ ("Constr" @@ (_, args), _) => toTreess(args)
+    case "TraitParents" @@ (_, _) => ListOfNil
     case "ArgumentExprs" @@ t => List(toTrees(t))
     case _ => sys.error(s"Can not translate ${term} to List[List[Tree]]")
   }
