@@ -59,6 +59,11 @@ trait SGLRParsers {
     case "DclTemplateStat" @@ (annots, mods, "FunDclDcl" @@ funDcl) =>
       toDefDef(toModifiers(mods, annots), funDcl)
 
+    case "DefTemplateStat" @@
+           (annots, mods, "Class" @@
+              ("ClassDef" @@ (morphism, constrAnnots, accessMods, classParamClauses, tplOpt))) =>
+      IClassDef(toModifiers(mods, annots), toTypeName(morphism), toTypeDefs(morphism), toModifiers(accessMods), toValDefss(classParamClauses), toTemplate(tplOpt))
+
     case "Some" @@ (t) => toTree(t)
 
     case @@("None") => EmptyTree
@@ -125,6 +130,10 @@ trait SGLRParsers {
     case "IfElseExpr" @@ (cond, then, els) => If(toTree(cond), toTree(then), toTree(els))
 
     case "MatchExpr" @@ (t, clauses) => Match(toTree(t), toCaseDefs(clauses))
+
+    case @@("This") => This(nme.EMPTY.toTypeName)
+
+    case "NewClassExpr" @@ tpl => toTypeTree(tpl)
 
     case _ => sys.error(s"Can not translate term ${term} to Tree")
   }
@@ -197,6 +206,12 @@ trait SGLRParsers {
     case "WithAnnotType" @@ t => toTypeTree(t)
     case "FunctionType" @@ (argtpes, restpe) =>
       makeFunctionTypeTree(toTypeTrees(argtpes), toTypeTree(restpe))
+    case "TupleType" @@ l => toTypeTree(l)
+    case Lst(types@_*) => makeTupleType(types.toList map toTypeTree, true)
+    case "StableId" @@ (l, sel) => Select(toTree(l), toTypeName(sel))
+    case tpl @ "ClassTemplate" @@ (_, _, _) => toTemplate(tpl).getOrElse {
+      sys.error(s"Expected ${tpl} to be a template")
+    }
     case _ => sys.error(s"Can not translate ${term} to TypeTree")
   }
 
@@ -240,11 +255,16 @@ trait SGLRParsers {
     case "Id" @@ _ => Nil
     case "TypeParamClause" @@ lst => toTypeDefs(lst)
     case Lst(defs@_*) => defs.toList map toTypeDef
+    case "Polymorph" @@ (_, defs) => toTypeDefs(defs)
     case _ => sys.error(s"Can not transform ${term} to List[TypeDef]")
   }
 
   def toTypeDef(term: Term): TypeDef = term match {
     case "VariantTypeParam" @@ (Lst(), typeParam) => toTypeDef(typeParam)
+    case "PlusVariantTypeParam" @@ (Lst(), typeParam) => {
+      val td = toTypeDef(typeParam)
+      td.copy(mods = td.mods | Flags.COVARIANT)
+    }
     case "TypeParam" @@ (id, tpc, lbt, ubt, Lst(), Lst()) =>
       TypeDef(Modifiers() | Flags.PARAM, toTypeName(id), toTypeDefs(tpc), toTypeBoundsTree(lbt, ubt))
     case _ => sys.error(s"Can not transform ${term} to TypeDef")
@@ -282,6 +302,8 @@ trait SGLRParsers {
     case Lst(mod, mods@_*) => mods.foldLeft(toModifiers(mod)) {(b, a) => b | toModifiers(a).flags}
     case @@("None") => Modifiers()
     case @@("OverrideModifier") => Modifiers() | Flags.OVERRIDE
+    case @@("ImplicitModifier") => Modifiers() | Flags.IMPLICIT
+    case @@("AbstractModifier") => Modifiers() | Flags.ABSTRACT
     case _ => sys.error(s"Can not translate ${term} to Modifiers")
   }
 
@@ -336,6 +358,7 @@ trait SGLRParsers {
   def toTypeName(term: Term): TypeName = term match {
     case "Id" @@ t => toTypeName(t)
     case Str(s) => newTypeName(s)
+    case "Polymorph" @@ (id, _) => toTypeName(id)
     case _ => sys.error(s"Can not translate ${term} to TypeName")
   }
 
