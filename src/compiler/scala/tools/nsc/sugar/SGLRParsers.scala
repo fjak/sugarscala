@@ -30,6 +30,9 @@ trait SGLRParsers {
   case class IObjectDef(mods: Modifiers, name: TermName, tpl: Option[Tree]) extends Tree
   case class IClassDef(mods: Modifiers, name: TypeName, tparams: List[TypeDef], accessMods: Modifiers, vparamss: List[List[ValDef]], impl: Option[Tree]) extends Tree
 
+  def isInterface(mods: Modifiers, body: List[Tree]): Boolean =
+    mods.isTrait && (body forall treeInfo.isInterfaceMember)
+
   def toTree(term: Term): Tree = term match {
     case "CompilationUnit" @@ (Lst(pkgs@_*), topStats) => toPackageDef(pkgs.toList, topStats)
 
@@ -304,11 +307,15 @@ trait SGLRParsers {
     override def transform(tree: Tree): Tree = tree match {
       case IObjectDef(mods, name, None) => ModuleDef(mods, name, defaultTemplate)
       case IObjectDef(mods, name, Some(t)) => ModuleDef(mods, name, toTemplate(t))
-      case IClassDef(mods, name, tparams, aMods, vparamss, impl) => ClassDef(mods, name, tparams, mkTemplate(impl, aMods, vparamss))
+      case IClassDef(mods, name, tparams, aMods, vparamss, impl) => {
+        val tpl = mkTemplate(impl, aMods, vparamss)
+        val mods1 = if (isInterface(mods, tpl.body)) mods | Flags.INTERFACE else mods
+        ClassDef(mods1, name, tparams, tpl)
+      }
       case _ => super.transform(tree)
     }
 
-    def mkTemplate(impl: Option[Tree], aMods: Modifiers, vparamss: List[List[ValDef]]) = impl match {
+    def mkTemplate(impl: Option[Tree], aMods: Modifiers, vparamss: List[List[ValDef]]): Template = impl match {
       case None =>
         Template(List(scalaAnyRefConstr), emptyValDef, aMods, vparamss, ListOfNil, Nil, NoPosition)
       case Some(IUnfinishedTemplate(parents, attrs, selfVal, stats@_*)) =>
