@@ -133,7 +133,7 @@ trait SGLRParsers {
 
     case @@("This") => This(nme.EMPTY.toTypeName)
 
-    case "NewClassExpr" @@ tpl => Apply(Select(New(toTypeTree(tpl)), nme.CONSTRUCTOR), toArgs(tpl))
+    case "NewClassExpr" @@ tpl => New(toTypeTree(tpl), toTreess(tpl))
 
     case _ => sys.error(s"Can not translate term ${term} to Tree")
   }
@@ -352,6 +352,7 @@ trait SGLRParsers {
     case "ClassParents" @@ ("Constr" @@ (_, args), _) => toTreess(args)
     case "TraitParents" @@ (_, _) => ListOfNil
     case "ArgumentExprs" @@ t => List(toTrees(t))
+    case "ClassTemplate" @@ (_, classParents, _) => toTreess(classParents)
     case _ => sys.error(s"Can not translate ${term} to List[List[Tree]]")
   }
 
