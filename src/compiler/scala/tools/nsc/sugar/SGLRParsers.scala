@@ -172,8 +172,8 @@ trait SGLRParsers {
 
   def toImportSelectors(term: Term): List[ImportSelector] = term match {
     case Str(name) => {
-      val typName = newTypeName(name)
-      List(ImportSelector(typName, -1, typName, -1))
+      val termName = newTermName(name)
+      List(ImportSelector(termName, -1, termName, -1))
     }
     case "ImportSelectors" @@ Lst(t@_*) => (t map toImportSelector).toList
     case _ => sys.error(s"Can not transform ${term} to ImportSelectors")
@@ -358,7 +358,7 @@ trait SGLRParsers {
 
   def toTermName(name: Term): TermName = name match {
     case "Id" @@ t => toTermName(t)
-    case Str(name) => name
+    case Str(name) => newTermName(name)
     case _ => sys.error(s"Can not translate ${name} to TermName")
   }
 
