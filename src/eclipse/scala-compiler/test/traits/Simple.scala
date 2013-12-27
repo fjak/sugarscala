@@ -1,3 +1,3 @@
 package traits
 
-trait Foo
+trait SimpleFoo
