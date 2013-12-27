@@ -133,7 +133,7 @@ trait SGLRParsers {
 
     case @@("This") => This(nme.EMPTY.toTypeName)
 
-    case "NewClassExpr" @@ tpl => toTypeTree(tpl)
+    case "NewClassExpr" @@ tpl => Apply(Select(New(toTypeTree(tpl)), nme.CONSTRUCTOR), toArgs(tpl))
 
     case _ => sys.error(s"Can not translate term ${term} to Tree")
   }
@@ -151,6 +151,13 @@ trait SGLRParsers {
     case "Exprs" @@ t => toTrees(t)
     case "TemplateBody" @@ tplStatSemis => toTrees(tplStatSemis)
     case _ => sys.error(s"Can not transform ${term} to List[Tree]")
+  }
+
+  def toArgs(term: Term): List[Tree] = term match {
+    case "ClassTemplate" @@ (_, classParents, _) => toArgs(classParents)
+    case "ClassParents" @@ (constr, _) => toArgs(constr)
+    case "Constr" @@ (_, @@("None")) => Nil
+    case _ => sys.error(s"Can not transform ${term} to arguments (List[Tree])")
   }
 
   def toImport(term: Term): Import = term match {
@@ -209,9 +216,8 @@ trait SGLRParsers {
     case "TupleType" @@ l => toTypeTree(l)
     case Lst(types@_*) => makeTupleType(types.toList map toTypeTree, true)
     case "StableId" @@ (l, sel) => Select(toTree(l), toTypeName(sel))
-    case tpl @ "ClassTemplate" @@ (_, _, _) => toTemplate(tpl).getOrElse {
-      sys.error(s"Expected ${tpl} to be a template")
-    }
+    case "ClassTemplate" @@ (_, classParents, _) => toTypeTree(classParents)
+    case "ClassParents" @@ (constr, _) => toTypeTree(constr)
     case _ => sys.error(s"Can not translate ${term} to TypeTree")
   }
 
