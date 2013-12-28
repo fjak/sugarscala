@@ -310,6 +310,8 @@ trait SGLRParsers {
     case @@("OverrideModifier") => Modifiers() | Flags.OVERRIDE
     case @@("ImplicitModifier") => Modifiers() | Flags.IMPLICIT
     case @@("AbstractModifier") => Modifiers() | Flags.ABSTRACT
+    case "PrivateModifier" @@ ("Some" @@ ("AccessQualifier" @@ id)) =>
+      Modifiers(NoMods.flags, toTypeName(id))
     case _ => sys.error(s"Can not translate ${term} to Modifiers")
   }
 
