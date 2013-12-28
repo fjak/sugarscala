@@ -373,12 +373,12 @@ trait SGLRParsers {
     override def transform(tree: Tree): Tree = tree match {
       case IObjectDef(mods, name, impl) => {
         val tpl = mkTemplate(impl, NoMods, ListOfNil)
-        ModuleDef(mods, name, tpl)
+        ModuleDef(mods, name, transform(tpl).asInstanceOf[Template])
       }
       case IClassDef(mods, name, tparams, aMods, vparamss, impl) => {
         val tpl = mkTemplate(impl, aMods, vparamss)
         val mods1 = if (isInterface(mods, tpl.body)) mods | Flags.INTERFACE else mods
-        ClassDef(mods1, name, tparams, tpl)
+        ClassDef(mods1, name, tparams, transform(tpl).asInstanceOf[Template])
       }
       case _ => super.transform(tree)
     }
