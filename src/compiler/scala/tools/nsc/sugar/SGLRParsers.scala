@@ -371,8 +371,10 @@ trait SGLRParsers {
 
   object ToFullScalacASTTransformer extends Transformer {
     override def transform(tree: Tree): Tree = tree match {
-      case IObjectDef(mods, name, None) => ModuleDef(mods, name, defaultTemplate)
-      case IObjectDef(mods, name, Some(t)) => ModuleDef(mods, name, toTemplate(t))
+      case IObjectDef(mods, name, impl) => {
+        val tpl = mkTemplate(impl, NoMods, ListOfNil)
+        ModuleDef(mods, name, tpl)
+      }
       case IClassDef(mods, name, tparams, aMods, vparamss, impl) => {
         val tpl = mkTemplate(impl, aMods, vparamss)
         val mods1 = if (isInterface(mods, tpl.body)) mods | Flags.INTERFACE else mods
@@ -387,14 +389,6 @@ trait SGLRParsers {
       case Some(IUnfinishedTemplate(parents, attrs, selfVal, stats@_*)) =>
         Template(parents, selfVal, aMods, vparamss, attrs, stats.toList, NoPosition)
       case _ => sys.error(s"Can not make template with impl: ${impl}, aMods: ${aMods}, vparamss: ${vparamss}")
-    }
-
-    def toTemplate(t: Tree) = t match {
-      case IUnfinishedTemplate(Nil, attrs, self, stats@_*) =>
-        Template(List(scalaAnyRefConstr), self, (defaultInit +: stats).toList)
-      case IUnfinishedTemplate(parents, attrs, self, stats@_*) =>
-        Template(parents, emptyValDef, (defaultInit +: stats).toList)
-      case _ => sys.error(s"Can not finish ${t}")
     }
   }
 
