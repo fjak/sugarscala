@@ -44,12 +44,12 @@ trait SGLRParsers {
       IObjectDef(toModifiers(mods, annots), toTermName(name), toTemplate(body))
 
     case "TopTmplDef" @@
-           (mods, annots, "Class" @@
+           (annots, mods, "Class" @@
               ("ClassDef" @@ (morphism, constrAnnots, accessMods, classParamClauses, tplOpt))) =>
       IClassDef(toModifiers(mods, annots), toTypeName(morphism), toTypeDefs(morphism), toModifiers(accessMods), toValDefss(classParamClauses), toTemplate(tplOpt))
 
     case "TopTmplDef" @@
-           (mods, annots, "Trait" @@
+           (annots, mods, "Trait" @@
               ("TraitDef" @@ (id, typeParams, tplOpt))) =>
       IClassDef(toModifiers(mods, annots) | Flags.TRAIT | Flags.ABSTRACT, toTypeName(id), toTypeDefs(typeParams), Modifiers() | Flags.TRAIT, ListOfNil, toTemplate(tplOpt))
 
