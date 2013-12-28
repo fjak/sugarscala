@@ -140,6 +140,8 @@ trait SGLRParsers {
 
     case "NewClassExpr" @@ tpl => New(toTypeTree(tpl), toTreess(tpl))
 
+    case "TypeApplication" @@ (expr, typeArgs) => TypeApply(toTree(expr), toTypeTrees(typeArgs))
+
     case _ => sys.error(s"Can not translate term ${term} to Tree")
   }
 
