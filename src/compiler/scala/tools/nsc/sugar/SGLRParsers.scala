@@ -64,6 +64,11 @@ trait SGLRParsers {
               ("ClassDef" @@ (morphism, constrAnnots, accessMods, classParamClauses, tplOpt))) =>
       IClassDef(toModifiers(mods, annots), toTypeName(morphism), toTypeDefs(morphism), toModifiers(accessMods), toValDefss(classParamClauses), toTemplate(tplOpt))
 
+    case "DefTemplateStat" @@
+           (annots, mods, "TypeDefDef" @@
+              ("TypeDef" @@ (id, tpc, rhs))) =>
+      TypeDef(toModifiers(mods, annots), toTypeName(id), toTypeDefs(tpc), toTypeTree(rhs))
+
     case "Some" @@ (t) => toTree(t)
 
     case @@("None") => EmptyTree
