@@ -314,6 +314,7 @@ trait SGLRParsers {
     case Lst() => Modifiers()
     case Lst(mod, mods@_*) => mods.foldLeft(toModifiers(mod)) {(b, a) => b | toModifiers(a).flags}
     case @@("None") => Modifiers()
+    case "Some" @@ t => toModifiers(t)
     case @@("OverrideModifier") => Modifiers() | Flags.OVERRIDE
     case @@("ImplicitModifier") => Modifiers() | Flags.IMPLICIT
     case @@("AbstractModifier") => Modifiers() | Flags.ABSTRACT
