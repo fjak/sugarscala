@@ -255,6 +255,10 @@ trait SGLRParsers {
   def toValDef(term: Term): ValDef = term match {
     case "ClassParam" @@ (annots, id, typed, rhs) =>
       ValDef(toModifiers(annots) | Flags.PrivateLocal | Flags.PARAM | Flags.PARAMACCESSOR, toTermName(id), toTypeTree(typed), toTree(rhs))
+    case "ValClassParam" @@ (annots, mods, id, typed, rhs) =>
+      ValDef(toModifiers(mods, annots) | Flags.PARAM | Flags.PARAMACCESSOR, toTermName(id), toTypeTree(typed), toTree(rhs))
+    case "VarClassParam" @@ (annots, mods, id, typed, rhs) =>
+      ValDef(toModifiers(mods, annots) | Flags.PARAM | Flags.PARAMACCESSOR | Flags.MUTABLE, toTermName(id), toTypeTree(typed), toTree(rhs))
     case "Param" @@ (annots, id, typed, rhs) =>
       ValDef(toModifiers(annots), toTermName(id), toTypeTree(typed), toTree(rhs))
     case "Binding" @@ (name, typ) =>
