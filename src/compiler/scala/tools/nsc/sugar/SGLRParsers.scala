@@ -59,6 +59,12 @@ trait SGLRParsers {
     case "DclTemplateStat" @@ (annots, mods, "FunDclDcl" @@ funDcl) =>
       toDefDef(toModifiers(mods, annots), funDcl)
 
+    case "DclTemplateStat" @@ (annots, mods, "ValDclDcl" @@ valDcl) =>
+      toValDef(valDcl, toModifiers(mods, annots))
+
+    case "DclTemplateStat" @@ (annots, mods, "VarDclDcl" @@ valDcl) =>
+      toValDef(valDcl, toModifiers(mods, annots))
+
     case "DefTemplateStat" @@
            (annots, mods, "Class" @@
               ("ClassDef" @@ (morphism, constrAnnots, accessMods, classParamClauses, tplOpt))) =>
@@ -91,6 +97,7 @@ trait SGLRParsers {
     case "Int" @@ Str(s) => Literal(Constant(s.toInt))
 
     case @@("False") => Literal(Constant(false))
+    case @@("True") => Literal(Constant(true))
 
     case t @ @@("ImportExpr", _*) => toImport(t)
 
@@ -126,7 +133,15 @@ trait SGLRParsers {
     case "DefTemplateStat" @@ (annots, mods, "VarPatDef" @@ ("PatDef" @@ (Lst(name), typ, expr))) =>
       ValDef(toModifiers(mods, annots) | Flags.MUTABLE, toTermName(name), toTypeTree(typ), toTree(expr))
 
+    case "DefBlockStat" @@ (annots, "ValPatDef" @@ ("PatDef" @@ (Lst(name), typ, expr))) =>
+      ValDef(toModifiers(annots), toTermName(name), toTypeTree(typ), toTree(expr))
+
+    case "DefBlockStat" @@ (annots, "VarPatDef" @@ ("PatDef" @@ (Lst(name), typ, expr))) =>
+      ValDef(toModifiers(annots) | Flags.MUTABLE, toTermName(name), toTypeTree(typ), toTree(expr))
+
     case "AssignmentExpr" @@ (lhs, rhs) => Assign(toTree(lhs), toTree(rhs))
+
+    case "Assignment" @@ expr => toTree(expr)
 
     case "Path" @@ l => toTree(l)
 
@@ -141,6 +156,8 @@ trait SGLRParsers {
     case "NewClassExpr" @@ tpl => New(toTypeTree(tpl), toTreess(tpl))
 
     case "TypeApplication" @@ (expr, typeArgs) => TypeApply(toTree(expr), toTypeTrees(typeArgs))
+
+    case @@("Null") => Literal(Constant(null))
 
     case _ => sys.error(s"Can not translate term ${term} to Tree")
   }
@@ -236,6 +253,7 @@ trait SGLRParsers {
     case "TraitParents" @@ (parent, withs) => toTypeTree(parent) :: toTypeTrees(withs)
     case Lst(withs@_*) => withs.toList map toTypeTree
     case t @ "Type" @@ _ => List(toTypeTree(t))
+    case "FunctionArgType" @@ l => toTypeTrees(l)
     case _ => sys.error(s"Can not translate ${term} to TypeTrees")
   }
 
@@ -246,11 +264,13 @@ trait SGLRParsers {
     case "ImplicitParamClause" @@ t => List(toValDefs(t, Modifiers() | Flags.IMPLICIT))
     case "ParamClauses" @@ ("ParamClause" @@ t, cls) => toValDefs(t) :: toValDefss(cls)
     case "ClassParamClause" @@ t => List(toValDefs(t))
+    case "ClassParamClauses" @@ (hd, tl) => toValDefs(hd) :: toValDefss(tl)
     case _ => sys.error(s"Can not transform ${term} to List[List[ValDef]]")
   }
 
   def toValDefs(term: Term, mods: Modifiers = Modifiers()): List[ValDef] = term match {
     case Lst(params@_*) => params.toList map { t => toValDef(t, mods) }
+    case "ClassParamClause" @@ lst => toValDefs(lst)
     case "Bindings" @@ l => toValDefs(l, mods)
     case _ => sys.error(s"Can not transform ${term} to List[ValDef]")
   }
@@ -266,6 +286,10 @@ trait SGLRParsers {
       ValDef(toModifiers(annots) | modifiers.flags, toTermName(id), toTypeTree(typed), toTree(rhs))
     case "Binding" @@ (name, typ) =>
       ValDef(Modifiers() | modifiers.flags, toTermName(name), toTypeTree(typ), EmptyTree)
+    case "ValDcl" @@ (Lst(name), typ) =>
+      ValDef(modifiers, toTermName(name), toTypeTree(typ), EmptyTree)
+    case "VarDcl" @@ (Lst(name), typ) =>
+      ValDef(modifiers | Flags.MUTABLE, toTermName(name), toTypeTree(typ), EmptyTree)
     case _ => sys.error(s"Can not transform ${term} to ValDef")
   }
 
@@ -325,8 +349,14 @@ trait SGLRParsers {
     case @@("OverrideModifier") => Modifiers() | Flags.OVERRIDE
     case @@("ImplicitModifier") => Modifiers() | Flags.IMPLICIT
     case @@("AbstractModifier") => Modifiers() | Flags.ABSTRACT
+    case "PrivateModifier" @@ (@@("None")) =>
+      Modifiers() | Flags.PRIVATE
     case "PrivateModifier" @@ ("Some" @@ ("AccessQualifier" @@ id)) =>
-      Modifiers(NoMods.flags, toTypeName(id))
+      Modifiers(NoMods.flags, toTypeName(id)) | Flags.PRIVATE
+    case "ProtectedModifier" @@ (@@("None")) =>
+      Modifiers() | Flags.PROTECTED
+    case "ProtectedModifier" @@ ("Some" @@ ("AccessQualifier" @@ id)) =>
+      Modifiers(NoMods.flags, toTypeName(id)) | Flags.PROTECTED
     case _ => sys.error(s"Can not translate ${term} to Modifiers")
   }
 
@@ -369,6 +399,7 @@ trait SGLRParsers {
     case "ClassParents" @@ ("Constr" @@ (_, args), _) => toTreess(args)
     case "TraitParents" @@ (_, _) => ListOfNil
     case "ArgumentExprs" @@ t => List(toTrees(t))
+    case "ArgumentExprsSeq" @@ (hd, tl) => toTrees(hd) :: toTreess(tl)
     case "ClassTemplate" @@ (_, classParents, _) => toTreess(classParents)
     case _ => sys.error(s"Can not translate ${term} to List[List[Tree]]")
   }
