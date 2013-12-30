@@ -243,28 +243,29 @@ trait SGLRParsers {
     case @@("None") => Nil
     case "Some" @@ t => toValDefss(t)
     case "ParamClause" @@ t => List(toValDefs(t))
+    case "ImplicitParamClause" @@ t => List(toValDefs(t, Modifiers() | Flags.IMPLICIT))
     case "ParamClauses" @@ ("ParamClause" @@ t, cls) => toValDefs(t) :: toValDefss(cls)
     case "ClassParamClause" @@ t => List(toValDefs(t))
     case _ => sys.error(s"Can not transform ${term} to List[List[ValDef]]")
   }
 
-  def toValDefs(term: Term): List[ValDef] = term match {
-    case Lst(params@_*) => params.toList map toValDef
-    case "Bindings" @@ l => toValDefs(l)
+  def toValDefs(term: Term, mods: Modifiers = Modifiers()): List[ValDef] = term match {
+    case Lst(params@_*) => params.toList map { t => toValDef(t, mods) }
+    case "Bindings" @@ l => toValDefs(l, mods)
     case _ => sys.error(s"Can not transform ${term} to List[ValDef]")
   }
 
-  def toValDef(term: Term): ValDef = term match {
+  def toValDef(term: Term, modifiers: Modifiers = Modifiers()): ValDef = term match {
     case "ClassParam" @@ (annots, id, typed, rhs) =>
-      ValDef(toModifiers(annots) | Flags.PrivateLocal | Flags.PARAM | Flags.PARAMACCESSOR, toTermName(id), toTypeTree(typed), toTree(rhs))
+      ValDef(toModifiers(annots) | Flags.PrivateLocal | Flags.PARAM | Flags.PARAMACCESSOR | modifiers.flags, toTermName(id), toTypeTree(typed), toTree(rhs))
     case "ValClassParam" @@ (annots, mods, id, typed, rhs) =>
-      ValDef(toModifiers(mods, annots) | Flags.PARAM | Flags.PARAMACCESSOR, toTermName(id), toTypeTree(typed), toTree(rhs))
+      ValDef(toModifiers(mods, annots) | Flags.PARAM | Flags.PARAMACCESSOR | modifiers.flags, toTermName(id), toTypeTree(typed), toTree(rhs))
     case "VarClassParam" @@ (annots, mods, id, typed, rhs) =>
-      ValDef(toModifiers(mods, annots) | Flags.PARAM | Flags.PARAMACCESSOR | Flags.MUTABLE, toTermName(id), toTypeTree(typed), toTree(rhs))
+      ValDef(toModifiers(mods, annots) | Flags.PARAM | Flags.PARAMACCESSOR | Flags.MUTABLE | modifiers.flags, toTermName(id), toTypeTree(typed), toTree(rhs))
     case "Param" @@ (annots, id, typed, rhs) =>
-      ValDef(toModifiers(annots), toTermName(id), toTypeTree(typed), toTree(rhs))
+      ValDef(toModifiers(annots) | modifiers.flags, toTermName(id), toTypeTree(typed), toTree(rhs))
     case "Binding" @@ (name, typ) =>
-      ValDef(Modifiers(), toTermName(name), toTypeTree(typ), EmptyTree)
+      ValDef(Modifiers() | modifiers.flags, toTermName(name), toTypeTree(typ), EmptyTree)
     case _ => sys.error(s"Can not transform ${term} to ValDef")
   }
 
