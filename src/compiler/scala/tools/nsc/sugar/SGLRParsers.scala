@@ -191,6 +191,8 @@ trait SGLRParsers {
       val name = toTermName(t)
       ImportSelector(name, -1, name, -1)
     }
+    case "MappedImportSelector" @@ (n, m) =>
+      ImportSelector(toTermName(n), -1, toTermName(m), -1)
     case _ => sys.error(s"Can not transform ${term} to ImportSelector")
   }
 
