@@ -287,9 +287,9 @@ trait SGLRParsers {
     case "Binding" @@ (name, typ) =>
       ValDef(Modifiers() | modifiers.flags, toTermName(name), toTypeTree(typ), EmptyTree)
     case "ValDcl" @@ (Lst(name), typ) =>
-      ValDef(modifiers, toTermName(name), toTypeTree(typ), EmptyTree)
+      ValDef(modifiers | Flags.DEFERRED, toTermName(name), toTypeTree(typ), EmptyTree)
     case "VarDcl" @@ (Lst(name), typ) =>
-      ValDef(modifiers | Flags.MUTABLE, toTermName(name), toTypeTree(typ), EmptyTree)
+      ValDef(modifiers | Flags.MUTABLE | Flags.DEFERRED, toTermName(name), toTypeTree(typ), EmptyTree)
     case _ => sys.error(s"Can not transform ${term} to ValDef")
   }
 
