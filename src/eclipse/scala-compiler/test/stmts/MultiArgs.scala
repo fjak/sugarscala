@@ -1,4 +1,4 @@
-package clazz
+package stmts
 
 class MultiArgs {
   def f(i: Int, j: Int)(s: String, s2: String)(b: Boolean, b1: Boolean) = i
