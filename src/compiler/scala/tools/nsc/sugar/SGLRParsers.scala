@@ -11,6 +11,7 @@ import scala.reflect.internal.util.SourceFile
 import java.io.FileReader
 import java.io.InputStream
 import scala.reflect.internal.{ModifierFlags => Flags}
+import org.apache.commons.lang.StringEscapeUtils
 
 trait SGLRParsers {
   val global : Global
@@ -20,6 +21,8 @@ trait SGLRParsers {
   def unescape(s: String): String = {
     s.drop(1).dropRight(1).replaceAllLiterally("""\"""", "\"")
   }
+
+  def toChar(s: String): Char = StringEscapeUtils.unescapeJava(s.drop(1).dropRight(1)).charAt(0)
 
   val scala_tbl_stream =
     getClass.getResourceAsStream("/scala/tools/nsc/sugar/Scala.tbl")
@@ -91,6 +94,8 @@ trait SGLRParsers {
     case "AppExpr" @@ (fun, args) => Apply(toTree(fun), toTrees(args))
 
     case "Id" @@ Str(name) => Ident(name)
+
+    case "Char" @@ Str(s) => Literal(Constant(toChar(s)))
 
     case "String" @@ Str(s) => Literal(Constant(unescape(s)))
 
