@@ -107,7 +107,12 @@ trait SGLRParsers {
 
     case "StableId" @@ (qid, select) => Select(toTree(qid), toTermName(select))
 
-    case Lst(t, ts@_*) => ts.foldLeft(toTree(t)) {(b,a) => Select(b, toTermName(a))}
+    case Lst(t, ts@_*) => {
+      if (ts.nonEmpty && ts.head == @@("This")) {
+        val base: Tree = This(toTypeName(t))
+        ts.tail.foldLeft(base) {(b,a) => Select(b, toTermName(a))}
+      } else ts.foldLeft(toTree(t)) {(b,a) => Select(b, toTermName(a))}
+    }
 
     case Str(name) => Ident(name)
 
