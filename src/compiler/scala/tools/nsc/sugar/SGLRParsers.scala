@@ -361,6 +361,7 @@ trait SGLRParsers {
       Modifiers(NoMods.flags, toTypeName(id)) | Flags.PROTECTED
     case "ProtectedModifier" @@ ("Some" @@ (@@("ThisQualifier"))) =>
       Modifiers(NoMods.flags) | Flags.ProtectedLocal
+    case @@("LazyModifier") => Modifiers() | Flags.LAZY
     case _ => sys.error(s"Can not translate ${term} to Modifiers")
   }
 
