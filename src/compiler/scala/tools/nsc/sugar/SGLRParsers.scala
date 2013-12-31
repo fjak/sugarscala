@@ -171,6 +171,18 @@ trait SGLRParsers {
 
     case "WhileExpr" @@ (cond, body) => makeWhile(-1, toTree(cond), toTree(body))
 
+    case "SelfInvocation" @@ argExprsSeq => {
+      val argss = toTreess(argExprsSeq)
+      argss match {
+        case Nil => Apply(Ident(nme.CONSTRUCTOR), Nil)
+        case List(Nil) => Apply(Ident(nme.CONSTRUCTOR), Nil)
+        case hd :: tl => {
+          val base = Apply(Ident(nme.CONSTRUCTOR), hd)
+          tl.foldLeft(base) {(b,a) => Apply(b, a)}
+        }
+      }
+    }
+
     case _ => sys.error(s"Can not translate term ${term} to Tree")
   }
 
@@ -235,6 +247,9 @@ trait SGLRParsers {
     case "FunDcl" @@ ("FunSig" @@ (id, tParams, vParams), retType) =>
       DefDef(mods | Flags.DEFERRED, toTermName(id), toTypeDefs(tParams),
              toValDefss(vParams), toTypeTree(retType), EmptyTree)
+    case "ThisExprFunDef" @@ (vParams, expr) =>
+      DefDef(mods, nme.CONSTRUCTOR, Nil, toValDefss(vParams), TypeTree(),
+        Block(List(toTree(expr)), Literal(Constant())))
     case _ => sys.error(s"Can not translate ${funDef} to DefDef")
   }
 
