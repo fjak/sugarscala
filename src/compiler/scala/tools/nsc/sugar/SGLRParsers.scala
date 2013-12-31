@@ -352,11 +352,15 @@ trait SGLRParsers {
     case "PrivateModifier" @@ (@@("None")) =>
       Modifiers() | Flags.PRIVATE
     case "PrivateModifier" @@ ("Some" @@ ("AccessQualifier" @@ id)) =>
-      Modifiers(NoMods.flags, toTypeName(id)) | Flags.PRIVATE
+      Modifiers(NoMods.flags, toTypeName(id))
+    case "PrivateModifier" @@ ("Some" @@ (@@("ThisQualifier"))) =>
+      Modifiers(NoMods.flags) | Flags.PrivateLocal
     case "ProtectedModifier" @@ (@@("None")) =>
       Modifiers() | Flags.PROTECTED
     case "ProtectedModifier" @@ ("Some" @@ ("AccessQualifier" @@ id)) =>
       Modifiers(NoMods.flags, toTypeName(id)) | Flags.PROTECTED
+    case "ProtectedModifier" @@ ("Some" @@ (@@("ThisQualifier"))) =>
+      Modifiers(NoMods.flags) | Flags.ProtectedLocal
     case _ => sys.error(s"Can not translate ${term} to Modifiers")
   }
 
