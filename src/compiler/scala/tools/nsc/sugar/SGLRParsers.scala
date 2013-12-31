@@ -169,6 +169,8 @@ trait SGLRParsers {
 
     case @@("Null") => Literal(Constant(null))
 
+    case "WhileExpr" @@ (cond, body) => makeWhile(-1, toTree(cond), toTree(body))
+
     case _ => sys.error(s"Can not translate term ${term} to Tree")
   }
 
