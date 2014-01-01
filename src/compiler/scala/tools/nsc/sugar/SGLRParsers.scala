@@ -173,7 +173,8 @@ trait SGLRParsers {
 
     case @@("This") => This(nme.EMPTY.toTypeName)
 
-    case "NewClassExpr" @@ tpl => New(toTypeTree(tpl), toTreess(tpl))
+    case t @ "NewClassExpr" @@ tpl =>
+      makeNew(toTypeTrees(tpl), emptyValDef, toTrees(tpl), toTreess(tpl), t.pos, tpl.pos)
 
     case "TypeApplication" @@ (expr, typeArgs) => TypeApply(toTree(expr), toTypeTrees(typeArgs))
 
@@ -210,6 +211,7 @@ trait SGLRParsers {
     case @@("None") => Nil
     case "Exprs" @@ t => toTrees(t)
     case "TemplateBody" @@ tplStatSemis => toTrees(tplStatSemis)
+    case "ClassTemplate" @@ (earlyDefs, parents, body) => toTrees(body)
     case _ => sys.error(s"Can not transform ${term} to List[Tree]")
   }
 
@@ -296,6 +298,7 @@ trait SGLRParsers {
     case Lst(withs@_*) => withs.toList map toTypeTree
     case t @ "Type" @@ _ => List(toTypeTree(t))
     case "FunctionArgType" @@ l => toTypeTrees(l)
+    case "ClassTemplate" @@ (earlyDefs, parents, body) => toTypeTrees(parents)
     case _ => sys.error(s"Can not translate ${term} to TypeTrees")
   }
 
