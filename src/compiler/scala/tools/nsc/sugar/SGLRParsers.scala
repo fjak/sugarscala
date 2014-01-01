@@ -89,10 +89,7 @@ trait SGLRParsers {
 
     case "BlockExpr" @@ t => toTree(t)
 
-    // Remove block having only one statement
-    case "Block" @@ (Lst(t)) => toTree(t)
-
-    case "Block" @@ (t) => Block(toTrees(t):_*)
+    case "Block" @@ t => makeBlock(toTrees(t))
 
     case "BlockStatSemi" @@ (t, _) => toTree(t)
 
