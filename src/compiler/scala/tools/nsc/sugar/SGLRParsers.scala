@@ -203,7 +203,7 @@ trait SGLRParsers {
       case "Import" @@ (imports) => toTrees(imports) ::: toTrees(Lst(ts:_*))
       case _ => toTree(t) :: toTrees(Lst(ts:_*))
     }
-    case "ArgumentExprs" @@ t => toTrees(t)
+    case "ArgumentExprs" @@ t => toArgs(t)
     case "Some" @@ t => toTrees(t)
     case @@("None") => Nil
     case "Exprs" @@ t => toTrees(t)
@@ -213,10 +213,19 @@ trait SGLRParsers {
   }
 
   def toArgs(term: Term): List[Tree] = term match {
+    case "Some" @@ t => toArgs(t)
+    case @@("None") => toTrees(term)
+    case "Exprs" @@ t => toArgs(t)
+    case Lst(exprs@_*) => exprs.toList map toArg
     case "ClassTemplate" @@ (_, classParents, _) => toArgs(classParents)
     case "ClassParents" @@ (constr, _) => toArgs(constr)
     case "Constr" @@ (_, @@("None")) => Nil
     case _ => sys.error(s"Can not transform ${term} to arguments (List[Tree])")
+  }
+
+  def toArg(term: Term): Tree = term match {
+    case "AssignmentExpr" @@ (lhs, rhs) => AssignOrNamedArg(toTree(lhs), toTree(rhs))
+    case _ => toTree(term)
   }
 
   def toImport(term: Term): Import = term match {
@@ -324,8 +333,13 @@ trait SGLRParsers {
       ValDef(toModifiers(mods, annots) | Flags.PARAM | Flags.PARAMACCESSOR | modifiers.flags, toTermName(id), toTypeTree(typed), toTree(rhs))
     case "VarClassParam" @@ (annots, mods, id, typed, rhs) =>
       ValDef(toModifiers(mods, annots) | Flags.PARAM | Flags.PARAMACCESSOR | Flags.MUTABLE | modifiers.flags, toTermName(id), toTypeTree(typed), toTree(rhs))
-    case "Param" @@ (annots, id, typed, rhs) =>
-      ValDef(toModifiers(annots) | modifiers.flags, toTermName(id), toTypeTree(typed), toTree(rhs))
+    case "Param" @@ (annots, id, typed, rhs) => {
+      val flags = rhs match {
+        case "Some" @@ ("Assignment" @@ e) => Flags.DEFAULTPARAM
+        case _ => NoMods.flags
+      }
+      ValDef(toModifiers(annots) | modifiers.flags | flags, toTermName(id), toTypeTree(typed), toTree(rhs))
+    }
     case "Binding" @@ (name, typ) =>
       ValDef(Modifiers() | modifiers.flags, toTermName(name), toTypeTree(typ), EmptyTree)
     case "ValDcl" @@ (Lst(name), typ) =>
