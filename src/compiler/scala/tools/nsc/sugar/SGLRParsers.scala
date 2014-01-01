@@ -12,6 +12,8 @@ import java.io.FileReader
 import java.io.InputStream
 import scala.reflect.internal.{ModifierFlags => Flags}
 import org.apache.commons.lang.StringEscapeUtils
+import org.spoofax.jsglr.client.imploder.ImploderAttachment
+import scala.reflect.internal.util.OffsetPosition
 
 trait SGLRParsers {
   val global : Global
@@ -247,9 +249,11 @@ trait SGLRParsers {
     case "FunDcl" @@ ("FunSig" @@ (id, tParams, vParams), retType) =>
       DefDef(mods | Flags.DEFERRED, toTermName(id), toTypeDefs(tParams),
              toValDefss(vParams), toTypeTree(retType), EmptyTree)
-    case "ThisExprFunDef" @@ (vParams, expr) =>
-      DefDef(mods, nme.CONSTRUCTOR, Nil, toValDefss(vParams), TypeTree(),
-        Block(List(toTree(expr)), Literal(Constant())))
+    case t @ "ThisExprFunDef" @@ (vParams, expr) =>
+      atPos(t.pos) {
+        DefDef(mods, nme.CONSTRUCTOR, Nil, toValDefss(vParams), TypeTree(),
+          Block(List(toTree(expr)), Literal(Constant())))
+      }
     case _ => sys.error(s"Can not translate ${funDef} to DefDef")
   }
 
@@ -475,7 +479,7 @@ trait SGLRParsers {
   class SGLRUnitParser(unit: global.CompilationUnit) {
     def parse(): Tree = {
       val stratego_term = parser.parse(unit.source)
-      val wrapped_term = Term(stratego_term)
+      val wrapped_term = Term(stratego_term)(unit.source)
       val iScalacAST = toTree(wrapped_term)
       val fullyTransformed = ToFullScalacASTTransformer.transform(iScalacAST)
       fullyTransformed
@@ -535,7 +539,14 @@ trait SGLRParsers {
     def loadFromFile(file: File) = ptm.loadFromStream(new FileInputStream(file))
   }
 
-  abstract class Term
+  abstract class Term {
+    var pos: Position = NoPosition
+
+    def withPos(i: Int)(implicit src: SourceFile) = {
+      pos = new OffsetPosition(src, i)
+      this
+    }
+  }
 
   case class @@(name: String, children: Term*) extends Term {
     override def toString = {
@@ -556,13 +567,16 @@ trait SGLRParsers {
   }
 
   object Term {
-    def apply(term: IStrategoTerm): Term = term match {
+    private def getOffset(term: IStrategoTerm) =
+      term.getAttachment(ImploderAttachment.TYPE).getLeftToken.getStartOffset
+
+    def apply(term: IStrategoTerm)(implicit src: SourceFile): Term = term match {
       case appl: StrategoAppl =>
-        @@(appl.getName, appl.getAllSubterms() map {Term(_)}: _*)
+        @@(appl.getName, appl.getAllSubterms() map {Term(_)}: _*) withPos(getOffset(term))
       case lst: StrategoList =>
-        Lst(lst.getAllSubterms() map {Term(_)}: _*)
+        Lst(lst.getAllSubterms() map {Term(_)}: _*) withPos(getOffset(term))
       case str: StrategoString =>
-        Str(str.stringValue())
+        Str(str.stringValue()) withPos(getOffset(term))
       case unexp => throw new RuntimeException(s"Unhandled IStrategoTerm: ${unexp}")
     }
   }
