@@ -193,6 +193,8 @@ trait SGLRParsers {
       }
     }
 
+    case "ThrowExpr" @@ e => Throw(toTree(e))
+
     case _ => sys.error(s"Can not translate term ${term} to Tree")
   }
 
