@@ -13,12 +13,10 @@ rm -fr bin.sugsc/*
 
 echo
 echo "### Compiling with scalac..."
-scalac -d bin.scalac "$@"
 scalac -d bin.scalac "$@" -Xprint:parser > scalac.ast
 
 echo
 echo "### Compiling with sugsc..."
-./sugsc -d bin.sugsc "$@"
 ./sugsc -d bin.sugsc "$@" -Xprint:parser > sugsc.ast
 
 shopt -s globstar
