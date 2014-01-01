@@ -2,18 +2,37 @@
 
 cd $(dirname "$BASH_SOURCE")
 
+echo "### Compiling sugsc..."
+ant quick.comp
+
 mkdir -p bin.scalac
 mkdir -p bin.sugsc
 
 rm -fr bin.scalac/*
 rm -fr bin.sugsc/*
 
+echo
+echo "### Compiling with scalac..."
 scalac -d bin.scalac "$@"
+scalac -d bin.scalac "$@" -Xprint:parser > scalac.ast
+
+echo
+echo "### Compiling with sugsc..."
 ./sugsc -d bin.sugsc "$@"
+./sugsc -d bin.sugsc "$@" -Xprint:parser > sugsc.ast
 
 shopt -s globstar
 
+echo
+echo "### Creating dump for scalac..."
 javap -s -c -p bin.scalac/**/*.class > scalac.dump
+echo "### Creating dump for sugsc..."
 javap -s -c -p bin.sugsc/**/*.class > sugsc.dump
 
+echo
+echo "### AST Diff: scalac | sugsc"
+sdiff -s {scalac,sugsc}.ast
+
+echo
+echo "### Bytecode Diff: scalac | sugsc"
 sdiff -s {scalac,sugsc}.dump

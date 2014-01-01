@@ -59,5 +59,7 @@
 /bin.scalac/
 /sugsc.dump
 /scalac.dump
+/sugsc.ast
+/scalac.ast
 
 // vim: set ts=4 sw=4 et:
