@@ -138,6 +138,8 @@ trait SGLRParsers {
 
     case "DesignatorExpr" @@ (t, sel) => Select(toTree(t), toTermName(sel))
 
+    case "TupleExpr" @@ Lst() => Literal(Constant())
+
     case "TupleExpr" @@ (Lst(t)) => toTree(t)
 
     case "FunExpr" @@ (bindings, body) => Function(toValDefs(bindings), toTree(body))
