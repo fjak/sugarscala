@@ -466,6 +466,12 @@ trait SGLRParsers {
 
   object ToFullScalacASTTransformer extends Transformer {
     override def transform(tree: Tree): Tree = tree match {
+      // The EmptyTree as rest of a template is lost on the recursive call.
+      // This will create a difference in the resulting AST, when providing an
+      // explicitly empty body, like `object Foo { }`. At least this has no influence on
+      // the resulting bytecode.
+      // I currently have no idea how to circumvent this. Trying to introduce
+      // an extra case like `EmptyTree => EmptyTree` does not help.
       case IObjectDef(mods, name, impl) => {
         val tpl = mkTemplate(impl, NoMods, ListOfNil)
         ModuleDef(mods, name, transform(tpl).asInstanceOf[Template])
@@ -483,7 +489,8 @@ trait SGLRParsers {
         Template(List(scalaAnyRefConstr), emptyValDef, aMods, vparamss, ListOfNil, Nil, NoPosition)
       case Some(IUnfinishedTemplate(parents, attrs, selfVal, stats@_*)) => {
         val parents0 = if (parents.isEmpty) List(scalaAnyRefConstr) else parents
-        Template(parents0, selfVal, aMods, vparamss, attrs, stats.toList, NoPosition)
+        val stats0 = if (stats.isEmpty) EmptyTree.asList else stats.toList
+        Template(parents0, selfVal, aMods, vparamss, attrs, stats0, NoPosition)
       }
       case _ => sys.error(s"Can not make template with impl: ${impl}, aMods: ${aMods}, vparamss: ${vparamss}")
     }
