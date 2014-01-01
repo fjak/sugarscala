@@ -481,8 +481,10 @@ trait SGLRParsers {
     def mkTemplate(impl: Option[Tree], aMods: Modifiers, vparamss: List[List[ValDef]]): Template = impl match {
       case None =>
         Template(List(scalaAnyRefConstr), emptyValDef, aMods, vparamss, ListOfNil, Nil, NoPosition)
-      case Some(IUnfinishedTemplate(parents, attrs, selfVal, stats@_*)) =>
-        Template(parents, selfVal, aMods, vparamss, attrs, stats.toList, NoPosition)
+      case Some(IUnfinishedTemplate(parents, attrs, selfVal, stats@_*)) => {
+        val parents0 = if (parents.isEmpty) List(scalaAnyRefConstr) else parents
+        Template(parents0, selfVal, aMods, vparamss, attrs, stats.toList, NoPosition)
+      }
       case _ => sys.error(s"Can not make template with impl: ${impl}, aMods: ${aMods}, vparamss: ${vparamss}")
     }
   }
