@@ -252,7 +252,7 @@ trait SGLRParsers {
   def toDefDef(mods: Modifiers, funDef: Term): DefDef = funDef match {
     case "ProcDef" @@ ("FunSig" @@ (id, tParams, vParams), body) =>
       DefDef(mods, toTermName(id), toTypeDefs(tParams), toValDefss(vParams),
-             TypeTree(), toTree(body))
+             scalaUnitConstr, toTree(body))
     case "FunDef" @@ ("FunSig" @@ (id, tParams, vParams), retType, body) =>
       DefDef(mods, toTermName(id), toTypeDefs(tParams), toValDefss(vParams),
              toTypeTree(retType), toTree(body))
