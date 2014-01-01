@@ -283,6 +283,7 @@ trait SGLRParsers {
     case "StableId" @@ (l, sel) => Select(toTree(l), toTypeName(sel))
     case "ClassTemplate" @@ (_, classParents, _) => toTypeTree(classParents)
     case "ClassParents" @@ (constr, _) => toTypeTree(constr)
+    case "SingletonType" @@ t => SingletonTypeTree(toTree(t))
     case _ => sys.error(s"Can not translate ${term} to TypeTree")
   }
 
