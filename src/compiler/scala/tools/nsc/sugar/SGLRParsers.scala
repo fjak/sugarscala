@@ -150,6 +150,9 @@ trait SGLRParsers {
     case "DefTemplateStat" @@ (annots, mods, "VarPatDef" @@ ("PatDef" @@ (Lst(name), typ, expr))) =>
       ValDef(toModifiers(mods, annots) | Flags.MUTABLE, toTermName(name), toTypeTree(typ), toTree(expr))
 
+    case "DefTemplateStat" @@ (annots, mods, "VarPatDef" @@ ("WildcardVarDef" @@ (Lst(name), typ))) =>
+      ValDef(toModifiers(mods, annots) | Flags.MUTABLE | Flags.DEFAULTINIT, toTermName(name), toTypeTree(typ), EmptyTree)
+
     case "DefBlockStat" @@ (annots, "ValPatDef" @@ ("PatDef" @@ (Lst(name), typ, expr))) =>
       ValDef(toModifiers(annots), toTermName(name), toTypeTree(typ), toTree(expr))
 
