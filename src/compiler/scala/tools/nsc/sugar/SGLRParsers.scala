@@ -165,7 +165,7 @@ trait SGLRParsers {
 
     case "Path" @@ l => toTree(l)
 
-    case "IfExpr" @@ (cond, then) => If(toTree(cond), toTree(then), EmptyTree)
+    case "IfExpr" @@ (cond, then) => If(toTree(cond), toTree(then), Literal(Constant()))
 
     case "IfElseExpr" @@ (cond, then, els) => If(toTree(cond), toTree(then), toTree(els))
 
