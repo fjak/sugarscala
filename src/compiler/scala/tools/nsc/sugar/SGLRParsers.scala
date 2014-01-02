@@ -354,7 +354,7 @@ trait SGLRParsers {
     case t @ "Type" @@ _ => List(toTypeTree(t))
     case "FunctionArgType" @@ l => toTypeTrees(l)
     case "ClassTemplate" @@ (earlyDefs, parents, body) => toTypeTrees(parents)
-    case _ => sys.error(s"Can not translate ${term} to TypeTrees")
+    case _ => List(toTypeTree(term))
   }
 
   def toValDef(term: Term, modifiers: Modifiers = Modifiers()): ValDef = term match {
