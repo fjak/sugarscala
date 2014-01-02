@@ -86,29 +86,26 @@ trait SGLRParsers {
       TypeDef(toModifiers(mods, annots), toTypeName(id), toTypeDefs(tpc), toTypeTree(rhs))
 
     case "DefTemplateStat" @@ (annots, mods, "ValPatDef" @@ ("PatDef" @@ (Lst(name), typ, expr))) =>
-      ValDef(toModifiers(mods, annots), toTermName(name), toTypeTree(typ), toTree(expr))
+      ValDef(toModifiers(mods, annots), toTermName(name), toTypeTree(typ), toExpr(expr))
 
     case "DefTemplateStat" @@ (annots, mods, "VarPatDef" @@ ("PatDef" @@ (Lst(name), typ, expr))) =>
-      ValDef(toModifiers(mods, annots) | Flags.MUTABLE, toTermName(name), toTypeTree(typ), toTree(expr))
+      ValDef(toModifiers(mods, annots) | Flags.MUTABLE, toTermName(name), toTypeTree(typ), toExpr(expr))
 
     case "DefTemplateStat" @@ (annots, mods, "VarPatDef" @@ ("WildcardVarDef" @@ (Lst(name), typ))) =>
       ValDef(toModifiers(mods, annots) | Flags.MUTABLE | Flags.DEFAULTINIT, toTermName(name), toTypeTree(typ), EmptyTree)
 
-    case "ExprTemplateStat" @@ t => toTree(t)
+    case "ExprTemplateStat" @@ t => toExpr(t)
 
 
     // --- Block Level Statements ---
     case "BlockStatSemi" @@ (t, _) => toTree(t)
 
     case "DefBlockStat" @@ (annots, "ValPatDef" @@ ("PatDef" @@ (Lst(name), typ, expr))) =>
-      ValDef(toModifiers(annots), toTermName(name), toTypeTree(typ), toTree(expr))
+      ValDef(toModifiers(annots), toTermName(name), toTypeTree(typ), toExpr(expr))
 
     case "DefBlockStat" @@ (annots, "VarPatDef" @@ ("PatDef" @@ (Lst(name), typ, expr))) =>
-      ValDef(toModifiers(annots) | Flags.MUTABLE, toTermName(name), toTypeTree(typ), toTree(expr))
+      ValDef(toModifiers(annots) | Flags.MUTABLE, toTermName(name), toTypeTree(typ), toExpr(expr))
 
-    case "BlockExpr" @@ t => toTree(t)
-
-    case "Block" @@ t => makeBlock(toTrees(t))
 
 
     // --- Imports ---
@@ -124,89 +121,7 @@ trait SGLRParsers {
 
     case @@("None") => EmptyTree
 
-
-    // --- Identifiers ---
-    case "Id" @@ Str(name) => Ident(name)
-
-    case "StableId" @@ (qid, select) => Select(toTree(qid), toTermName(select))
-
-    case Lst(t, ts@_*) => {
-      if (ts.nonEmpty && ts.head == @@("This")) {
-        val base: Tree = This(toTypeName(t))
-        ts.tail.foldLeft(base) {(b,a) => Select(b, toTermName(a))}
-      } else ts.foldLeft(toTree(t)) {(b,a) => Select(b, toTermName(a))}
-    }
-
-    case Str(name) => Ident(name)
-
-    case "Path" @@ l => toTree(l)
-
-
-    // --- Expressions ---
-    case "Char" @@ Str(s) => Literal(Constant(toChar(s)))
-
-    case "String" @@ Str(s) => Literal(Constant(unescape(s)))
-
-    case "Int" @@ Str(s) => Literal(Constant(s.toInt))
-
-    case @@("False") => Literal(Constant(false))
-
-    case @@("True") => Literal(Constant(true))
-
-    case @@("Null") => Literal(Constant(null))
-
-    case @@("This") => This(nme.EMPTY.toTypeName)
-
-    case "AppExpr" @@ (fun, args) => Apply(toTree(fun), toTrees(args))
-
-    case "PrefixExpr" @@ (op, arg) =>
-      Select(toTree(arg), toTermName(op).encode.prepend("unary_"))
-
-    case "InfixExpr" @@ (lhs, op, rhs) =>
-      Apply(Select(toTree(lhs), toTermName(op).encode), List(toTree(rhs)))
-
-    case "PostfixExpr" @@ (arg, op) => Select(toTree(arg), toTermName(op).encode)
-
-    case "DesignatorExpr" @@ (t, sel) => Select(toTree(t), toTermName(sel))
-
-    case "TupleExpr" @@ Lst() => Literal(Constant())
-
-    case "TupleExpr" @@ (Lst(t)) => toTree(t)
-
-    case "FunExpr" @@ (bindings, body) => Function(toValDefs(bindings), toTree(body))
-
-    case "AssignmentExpr" @@ (lhs, rhs) => Assign(toTree(lhs), toTree(rhs))
-
-    case "Assignment" @@ expr => toTree(expr)
-
-    case "IfExpr" @@ (cond, then) => If(toTree(cond), toTree(then), Literal(Constant()))
-
-    case "IfElseExpr" @@ (cond, then, els) => If(toTree(cond), toTree(then), toTree(els))
-
-    case "MatchExpr" @@ (t, clauses) => Match(toTree(t), toCaseDefs(clauses))
-
-    case t @ "NewClassExpr" @@ tpl =>
-      makeNew(toTypeTrees(tpl), emptyValDef, toTrees(tpl), toTreess(tpl), t.pos, tpl.pos)
-
-    case "TypeApplication" @@ (expr, typeArgs) => TypeApply(toTree(expr), toTypeTrees(typeArgs))
-
-    case "WhileExpr" @@ (cond, body) => makeWhile(-1, toTree(cond), toTree(body))
-
-    case "SelfInvocation" @@ argExprsSeq => {
-      val argss = toTreess(argExprsSeq)
-      argss match {
-        case Nil => Apply(Ident(nme.CONSTRUCTOR), Nil)
-        case List(Nil) => Apply(Ident(nme.CONSTRUCTOR), Nil)
-        case hd :: tl => {
-          val base = Apply(Ident(nme.CONSTRUCTOR), hd)
-          tl.foldLeft(base) {(b,a) => Apply(b, a)}
-        }
-      }
-    }
-
-    case "ThrowExpr" @@ e => Throw(toTree(e))
-
-    case _ => sys.error(s"Can not translate term ${term} to Tree")
+    case _ => toExpr(term)
   }
 
   def toTrees(term: Term): List[Tree] = term match {
@@ -258,6 +173,91 @@ trait SGLRParsers {
       placeholderParams = param :: placeholderParams
       id
     }
+
+    // --- Identifiers ---
+    case "Id" @@ Str(name) => Ident(name)
+
+    case "StableId" @@ (qid, select) => Select(toExpr0(qid), toTermName(select))
+
+    case Lst(t, ts@_*) => {
+      if (ts.nonEmpty && ts.head == @@("This")) {
+        val base: Tree = This(toTypeName(t))
+        ts.tail.foldLeft(base) {(b,a) => Select(b, toTermName(a))}
+      } else ts.foldLeft(toExpr0(t)) {(b,a) => Select(b, toTermName(a))}
+    }
+
+    // --- Expressions ---
+    case "BlockExpr" @@ t => toExpr(t)
+
+    case "Block" @@ t => makeBlock(toTrees(t))
+
+    case Str(name) => Ident(name)
+
+    case "Path" @@ l => toExpr0(l)
+
+    case "Char" @@ Str(s) => Literal(Constant(toChar(s)))
+
+    case "String" @@ Str(s) => Literal(Constant(unescape(s)))
+
+    case "Int" @@ Str(s) => Literal(Constant(s.toInt))
+
+    case @@("False") => Literal(Constant(false))
+
+    case @@("True") => Literal(Constant(true))
+
+    case @@("Null") => Literal(Constant(null))
+
+    case @@("This") => This(nme.EMPTY.toTypeName)
+
+    case "AppExpr" @@ (fun, args) => Apply(toExpr0(fun), toTrees(args))
+
+    case "PrefixExpr" @@ (op, arg) =>
+      Select(toExpr0(arg), toTermName(op).encode.prepend("unary_"))
+
+    case "InfixExpr" @@ (lhs, op, rhs) =>
+      Apply(Select(toExpr0(lhs), toTermName(op).encode), List(toExpr0(rhs)))
+
+    case "PostfixExpr" @@ (arg, op) => Select(toExpr0(arg), toTermName(op).encode)
+
+    case "DesignatorExpr" @@ (t, sel) => Select(toExpr0(t), toTermName(sel))
+
+    case "TupleExpr" @@ Lst() => Literal(Constant())
+
+    case "TupleExpr" @@ (Lst(t)) => toExpr(t)
+
+    case "FunExpr" @@ (bindings, body) => Function(toValDefs(bindings), toExpr0(body))
+
+    case "AssignmentExpr" @@ (lhs, rhs) => Assign(toExpr0(lhs), toExpr0(rhs))
+
+    case "Assignment" @@ expr => toExpr0(expr)
+
+    case "IfExpr" @@ (cond, then) => If(toExpr(cond), toExpr0(then), Literal(Constant()))
+
+    case "IfElseExpr" @@ (cond, then, els) => If(toExpr(cond), toExpr0(then), toExpr0(els))
+
+    case "MatchExpr" @@ (t, clauses) => Match(toExpr0(t), toCaseDefs(clauses))
+
+    case t @ "NewClassExpr" @@ tpl =>
+      makeNew(toTypeTrees(tpl), emptyValDef, toTrees(tpl), toTreess(tpl), t.pos, tpl.pos)
+
+    case "TypeApplication" @@ (expr, typeArgs) => TypeApply(toExpr0(expr), toTypeTrees(typeArgs))
+
+    case "WhileExpr" @@ (cond, body) => makeWhile(-1, toExpr(cond), toExpr0(body))
+
+    case "SelfInvocation" @@ argExprsSeq => {
+      val argss = toTreess(argExprsSeq)
+      argss match {
+        case Nil => Apply(Ident(nme.CONSTRUCTOR), Nil)
+        case List(Nil) => Apply(Ident(nme.CONSTRUCTOR), Nil)
+        case hd :: tl => {
+          val base = Apply(Ident(nme.CONSTRUCTOR), hd)
+          tl.foldLeft(base) {(b,a) => Apply(b, a)}
+        }
+      }
+    }
+
+    case "ThrowExpr" @@ e => Throw(toExpr0(e))
+
     case _ => sys.error(s"Can not translate ${term} to expr")
   }
 
