@@ -357,6 +357,9 @@ trait SGLRParsers {
     case "SingletonType" @@ t => SingletonTypeTree(toTree(t))
     case "UpperBoundType" @@ t => toTypeTree(t)
     case "LowerBoundType" @@ t => toTypeTree(t)
+    case "CompoundType" @@ (typ, withs, refinement) =>
+      CompoundTypeTree(Template(toTypeTree(typ) :: toTypeTrees(withs), emptyValDef, Nil))
+    case "With" @@ t => toTypeTree(t)
     case _ => sys.error(s"Can not translate ${term} to TypeTree")
   }
 
