@@ -209,6 +209,33 @@ trait SGLRParsers {
     case _ => sys.error(s"Can not translate term ${term} to Tree")
   }
 
+  def toTrees(term: Term): List[Tree] = term match {
+    case Lst() => Nil
+    case Lst(t, ts@_*) => t match {
+      case "TopStatSemi" @@ (imprt @ @@("Import", _*), _) => toTrees(Lst((imprt +: ts):_*))
+      case "Import" @@ (imports) => toTrees(imports) ::: toTrees(Lst(ts:_*))
+      case _ => toTree(t) :: toTrees(Lst(ts:_*))
+    }
+    case "ArgumentExprs" @@ t => toArgs(t)
+    case "Some" @@ t => toTrees(t)
+    case @@("None") => Nil
+    case "Exprs" @@ t => toTrees(t)
+    case "TemplateBody" @@ tplStatSemis => toTrees(tplStatSemis)
+    case "ClassTemplate" @@ (earlyDefs, parents, body) => toTrees(body)
+    case _ => sys.error(s"Can not transform ${term} to List[Tree]")
+  }
+
+  def toTreess(term: Term): List[List[Tree]] = term match {
+    case @@("None") => ListOfNil
+    case "Some" @@ t => toTreess(t)
+    case "ClassParents" @@ ("Constr" @@ (_, args), _) => toTreess(args)
+    case "TraitParents" @@ (_, _) => ListOfNil
+    case "ArgumentExprs" @@ t => List(toTrees(t))
+    case "ArgumentExprsSeq" @@ (hd, tl) => toTrees(hd) :: toTreess(tl)
+    case "ClassTemplate" @@ (_, classParents, _) => toTreess(classParents)
+    case _ => sys.error(s"Can not translate ${term} to List[List[Tree]]")
+  }
+
   var placeholderParams: List[ValDef] = Nil
 
   def toExpr(term: Term): Tree = {
@@ -234,20 +261,9 @@ trait SGLRParsers {
     case _ => sys.error(s"Can not translate ${term} to expr")
   }
 
-  def toTrees(term: Term): List[Tree] = term match {
-    case Lst() => Nil
-    case Lst(t, ts@_*) => t match {
-      case "TopStatSemi" @@ (imprt @ @@("Import", _*), _) => toTrees(Lst((imprt +: ts):_*))
-      case "Import" @@ (imports) => toTrees(imports) ::: toTrees(Lst(ts:_*))
-      case _ => toTree(t) :: toTrees(Lst(ts:_*))
-    }
-    case "ArgumentExprs" @@ t => toArgs(t)
-    case "Some" @@ t => toTrees(t)
-    case @@("None") => Nil
-    case "Exprs" @@ t => toTrees(t)
-    case "TemplateBody" @@ tplStatSemis => toTrees(tplStatSemis)
-    case "ClassTemplate" @@ (earlyDefs, parents, body) => toTrees(body)
-    case _ => sys.error(s"Can not transform ${term} to List[Tree]")
+  def toArg(term: Term): Tree = term match {
+    case "AssignmentExpr" @@ (lhs, rhs) => AssignOrNamedArg(toTree(lhs), toTree(rhs))
+    case _ => toTree(term)
   }
 
   def toArgs(term: Term): List[Tree] = term match {
@@ -259,11 +275,6 @@ trait SGLRParsers {
     case "ClassParents" @@ (constr, _) => toArgs(constr)
     case "Constr" @@ (_, @@("None")) => Nil
     case _ => sys.error(s"Can not transform ${term} to arguments (List[Tree])")
-  }
-
-  def toArg(term: Term): Tree = term match {
-    case "AssignmentExpr" @@ (lhs, rhs) => AssignOrNamedArg(toTree(lhs), toTree(rhs))
-    case _ => toTree(term)
   }
 
   def toImport(term: Term): Import = term match {
@@ -346,24 +357,6 @@ trait SGLRParsers {
     case _ => sys.error(s"Can not translate ${term} to TypeTrees")
   }
 
-  def toValDefss(term: Term): List[List[ValDef]] = term match {
-    case @@("None") => Nil
-    case "Some" @@ t => toValDefss(t)
-    case "ParamClause" @@ t => List(toValDefs(t))
-    case "ImplicitParamClause" @@ t => List(toValDefs(t, Modifiers() | Flags.IMPLICIT))
-    case "ParamClauses" @@ ("ParamClause" @@ t, cls) => toValDefs(t) :: toValDefss(cls)
-    case "ClassParamClause" @@ t => List(toValDefs(t))
-    case "ClassParamClauses" @@ (hd, tl) => toValDefs(hd) :: toValDefss(tl)
-    case _ => sys.error(s"Can not transform ${term} to List[List[ValDef]]")
-  }
-
-  def toValDefs(term: Term, mods: Modifiers = Modifiers()): List[ValDef] = term match {
-    case Lst(params@_*) => params.toList map { t => toValDef(t, mods) }
-    case "ClassParamClause" @@ lst => toValDefs(lst)
-    case "Bindings" @@ l => toValDefs(l, mods)
-    case _ => sys.error(s"Can not transform ${term} to List[ValDef]")
-  }
-
   def toValDef(term: Term, modifiers: Modifiers = Modifiers()): ValDef = term match {
     case "ClassParam" @@ (annots, id, typed, rhs) =>
       ValDef(toModifiers(annots) | Flags.PrivateLocal | Flags.PARAM | Flags.PARAMACCESSOR | modifiers.flags, toTermName(id), toTypeTree(typed), toTree(rhs))
@@ -387,14 +380,22 @@ trait SGLRParsers {
     case _ => sys.error(s"Can not transform ${term} to ValDef")
   }
 
-  def toTypeDefs(term: Term): List[TypeDef] = term match {
+  def toValDefs(term: Term, mods: Modifiers = Modifiers()): List[ValDef] = term match {
+    case Lst(params@_*) => params.toList map { t => toValDef(t, mods) }
+    case "ClassParamClause" @@ lst => toValDefs(lst)
+    case "Bindings" @@ l => toValDefs(l, mods)
+    case _ => sys.error(s"Can not transform ${term} to List[ValDef]")
+  }
+
+  def toValDefss(term: Term): List[List[ValDef]] = term match {
     case @@("None") => Nil
-    case "Some" @@ t => toTypeDefs(t)
-    case "Id" @@ _ => Nil
-    case "TypeParamClause" @@ lst => toTypeDefs(lst)
-    case Lst(defs@_*) => defs.toList map toTypeDef
-    case "Polymorph" @@ (_, defs) => toTypeDefs(defs)
-    case _ => sys.error(s"Can not transform ${term} to List[TypeDef]")
+    case "Some" @@ t => toValDefss(t)
+    case "ParamClause" @@ t => List(toValDefs(t))
+    case "ImplicitParamClause" @@ t => List(toValDefs(t, Modifiers() | Flags.IMPLICIT))
+    case "ParamClauses" @@ ("ParamClause" @@ t, cls) => toValDefs(t) :: toValDefss(cls)
+    case "ClassParamClause" @@ t => List(toValDefs(t))
+    case "ClassParamClauses" @@ (hd, tl) => toValDefs(hd) :: toValDefss(tl)
+    case _ => sys.error(s"Can not transform ${term} to List[List[ValDef]]")
   }
 
   def toTypeDef(term: Term): TypeDef = term match {
@@ -406,6 +407,16 @@ trait SGLRParsers {
     case "TypeParam" @@ (id, tpc, lbt, ubt, Lst(), Lst()) =>
       TypeDef(Modifiers() | Flags.PARAM, toTypeName(id), toTypeDefs(tpc), toTypeBoundsTree(lbt, ubt))
     case _ => sys.error(s"Can not transform ${term} to TypeDef")
+  }
+
+  def toTypeDefs(term: Term): List[TypeDef] = term match {
+    case @@("None") => Nil
+    case "Some" @@ t => toTypeDefs(t)
+    case "Id" @@ _ => Nil
+    case "TypeParamClause" @@ lst => toTypeDefs(lst)
+    case Lst(defs@_*) => defs.toList map toTypeDef
+    case "Polymorph" @@ (_, defs) => toTypeDefs(defs)
+    case _ => sys.error(s"Can not transform ${term} to List[TypeDef]")
   }
 
   def toTypeBoundsTree(lbt: Term, ubt: Term): TypeBoundsTree = {
@@ -461,15 +472,15 @@ trait SGLRParsers {
 
   def toModifiers(mods: Term, annots: Term): Modifiers = toModifiers(mods)
 
-  def toCaseDefs(term: Term): List[CaseDef] = term match {
-    case Lst(clauses@_*) => clauses.toList map toCaseDef
-    case _ => sys.error(s"Can not translate ${term} to List[CaseDef]")
-  }
-
   def toCaseDef(term: Term): CaseDef = term match {
     case "CaseClause" @@ (pat, @@("None"), blk) =>
       CaseDef(toPatternTree(pat), EmptyTree, toTree(blk))
     case _ => sys.error(s"Can not translate ${term} to CaseDef")
+  }
+
+  def toCaseDefs(term: Term): List[CaseDef] = term match {
+    case Lst(clauses@_*) => clauses.toList map toCaseDef
+    case _ => sys.error(s"Can not translate ${term} to List[CaseDef]")
   }
 
   def toPatternTree(term: Term): Tree = term match {
@@ -490,17 +501,6 @@ trait SGLRParsers {
     case "TraitTemplate" @@ (earlyDefs, parents, body) =>
       Some(IUnfinishedTemplate(toTypeTrees(parents), toTreess(parents), emptyValDef, toTrees(body):_*))
     case _ => sys.error(s"Can not translate ${body} to Template")
-  }
-
-  def toTreess(term: Term): List[List[Tree]] = term match {
-    case @@("None") => ListOfNil
-    case "Some" @@ t => toTreess(t)
-    case "ClassParents" @@ ("Constr" @@ (_, args), _) => toTreess(args)
-    case "TraitParents" @@ (_, _) => ListOfNil
-    case "ArgumentExprs" @@ t => List(toTrees(t))
-    case "ArgumentExprsSeq" @@ (hd, tl) => toTrees(hd) :: toTreess(tl)
-    case "ClassTemplate" @@ (_, classParents, _) => toTreess(classParents)
-    case _ => sys.error(s"Can not translate ${term} to List[List[Tree]]")
   }
 
   def toTermName(name: Term): TermName = name match {
