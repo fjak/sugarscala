@@ -221,6 +221,9 @@ trait SGLRParsers {
 
     case "DesignatorExpr" @@ (t, sel) => Select(toExpr0(t), toTermName(sel))
 
+    case "DesignatorAssignmentExpr" @@ (expr, id, rhs) =>
+      Assign(Select(toExpr0(expr), toTermName(id)), toExpr0(rhs))
+
     case "TupleExpr" @@ Lst() => Literal(Constant())
 
     case "TupleExpr" @@ (Lst(t)) => toExpr(t)
