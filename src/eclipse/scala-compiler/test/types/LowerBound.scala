@@ -1,7 +1,7 @@
 package types
 
-trait UpperBoundFooable {
+trait LowerBoundFooable {
   def foo
 }
 
-trait UpperBound[A >: UpperBoundFooable]
+trait LowerBound[A >: LowerBoundFooable]
