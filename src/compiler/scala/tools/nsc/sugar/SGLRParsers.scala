@@ -355,6 +355,8 @@ trait SGLRParsers {
     case "ClassTemplate" @@ (_, classParents, _) => toTypeTree(classParents)
     case "ClassParents" @@ (constr, _) => toTypeTree(constr)
     case "SingletonType" @@ t => SingletonTypeTree(toTree(t))
+    case "UpperBoundType" @@ t => toTypeTree(t)
+    case "LowerBoundType" @@ t => toTypeTree(t)
     case _ => sys.error(s"Can not translate ${term} to TypeTree")
   }
 
@@ -434,9 +436,11 @@ trait SGLRParsers {
   def toTypeBoundsTree(lbt: Term, ubt: Term): TypeBoundsTree = {
     val lb = lbt match {
       case @@("None") => rootScalaDot(tpnme.Nothing)
+      case "Some" @@ t => toTypeTree(t)
     }
     val ub = ubt match {
       case @@("None") => rootScalaDot(tpnme.Any)
+      case "Some" @@ t => toTypeTree(t)
     }
     TypeBoundsTree(lb, ub)
   }
