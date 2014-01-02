@@ -204,7 +204,12 @@ trait SGLRParsers {
 
     case "String" @@ Str(s) => Literal(Constant(unescape(s)))
 
-    case "Int" @@ Str(s) => Literal(Constant(s.toInt))
+    case "Int" @@ Str(s) => {
+      Literal(Constant(
+        if (s.endsWith("L") | s.endsWith("l")) s.dropRight(1).toLong
+        else s.toInt
+      ))
+    }
 
     case @@("False") => Literal(Constant(false))
 
