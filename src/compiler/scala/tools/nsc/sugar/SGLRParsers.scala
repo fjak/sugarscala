@@ -136,6 +136,7 @@ trait SGLRParsers {
     case @@("None") => Nil
     case "Exprs" @@ t => toTrees(t)
     case "TemplateBody" @@ tplStatSemis => toTrees(tplStatSemis)
+    case "SelfTypeTemplateBody" @@ (selfType, tplStatSemis) => toTrees(tplStatSemis)
     case "ClassTemplate" @@ (earlyDefs, parents, body) => toTrees(body)
     case _ => sys.error(s"Can not transform ${term} to List[Tree]")
   }
@@ -394,7 +395,10 @@ trait SGLRParsers {
       ValDef(modifiers | Flags.DEFERRED, toTermName(name), toTypeTree(typ), EmptyTree)
     case "VarDcl" @@ (Lst(name), typ) =>
       ValDef(modifiers | Flags.MUTABLE | Flags.DEFERRED, toTermName(name), toTypeTree(typ), EmptyTree)
-    case _ => sys.error(s"Can not transform ${term} to ValDef")
+    case "SelfType" @@ (id, typ) =>
+      ValDef(modifiers | Flags.PRIVATE, toTermName(id), toTypeTree(typ), EmptyTree)
+    case "Some" @@ ("SelfTypeTemplateBody" @@ (selfType, _)) => toValDef(selfType)
+    case _ => emptyValDef
   }
 
   def toValDefs(term: Term, mods: Modifiers = Modifiers()): List[ValDef] = term match {
@@ -513,12 +517,14 @@ trait SGLRParsers {
     case @@("EmptyTraitTemplateOpt") => None
     case "TemplateBody" @@ (tplStatSemis) =>
       Some(IUnfinishedTemplate(Nil, ListOfNil, emptyValDef, toTrees(tplStatSemis):_*))
+    case "SelfTypeTemplateBody" @@ (selfType, tplStatSemis) =>
+      Some(IUnfinishedTemplate(Nil, ListOfNil, toValDef(selfType), toTrees(tplStatSemis):_*))
     case "ClassClassTemplateOpt" @@ t => toTemplate(t)
     case "TraitTraitTemplateOpt" @@ t => toTemplate(t)
     case "ClassTemplate" @@ (earlyDefs, parents, body) =>
-      Some(IUnfinishedTemplate(toTypeTrees(parents), toTreess(parents), emptyValDef, toTrees(body):_*))
+      Some(IUnfinishedTemplate(toTypeTrees(parents), toTreess(parents), toValDef(body), toTrees(body):_*))
     case "TraitTemplate" @@ (earlyDefs, parents, body) =>
-      Some(IUnfinishedTemplate(toTypeTrees(parents), toTreess(parents), emptyValDef, toTrees(body):_*))
+      Some(IUnfinishedTemplate(toTypeTrees(parents), toTreess(parents), toValDef(body), toTrees(body):_*))
     case _ => sys.error(s"Can not translate ${body} to Template")
   }
 
