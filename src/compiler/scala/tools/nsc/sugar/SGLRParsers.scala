@@ -241,6 +241,9 @@ trait SGLRParsers {
 
     case "Assignment" @@ expr => toExpr0(expr)
 
+    case "AccessAssignmentExpr" @@ (fun, args, rhs) =>
+      makeAssign(Apply(toExpr0(fun), toTrees(args)), toExpr0(rhs))
+
     case "IfExpr" @@ (cond, then) => If(toExpr(cond), toExpr0(then), Literal(Constant()))
 
     case "IfElseExpr" @@ (cond, then, els) => If(toExpr(cond), toExpr0(then), toExpr0(els))
