@@ -209,6 +209,31 @@ trait SGLRParsers {
     case _ => sys.error(s"Can not translate term ${term} to Tree")
   }
 
+  var placeholderParams: List[ValDef] = Nil
+
+  def toExpr(term: Term): Tree = {
+    var savedPlaceholderParams = placeholderParams
+    placeholderParams = List()
+    var res = toExpr0(term)
+    if (!placeholderParams.isEmpty) {
+      res = atPos(res.pos){ Function(placeholderParams.reverse, res) }
+      placeholderParams = List()
+    }
+    placeholderParams = placeholderParams ::: savedPlaceholderParams
+    res
+  }
+
+  def toExpr0(term: Term): Tree = term match {
+    case @@("WildcardExpr") => {
+      val pname = freshName("x$")
+      val id = Ident(pname)
+      val param = makeSyntheticParam(pname)
+      placeholderParams = param :: placeholderParams
+      id
+    }
+    case _ => sys.error(s"Can not translate ${term} to expr")
+  }
+
   def toTrees(term: Term): List[Tree] = term match {
     case Lst() => Nil
     case Lst(t, ts@_*) => t match {
