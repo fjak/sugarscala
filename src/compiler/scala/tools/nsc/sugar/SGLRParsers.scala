@@ -514,7 +514,7 @@ trait SGLRParsers {
 
   def toTermName(name: Term): TermName = name match {
     case "Id" @@ t => toTermName(t)
-    case Str(name) => newTermName(name)
+    case Str(name) => newTermName(name).encode
     case _ => sys.error(s"Can not translate ${name} to TermName")
   }
 
