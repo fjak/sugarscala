@@ -637,24 +637,27 @@ trait SGLRParsers {
       pos = new OffsetPosition(src, i)
       this
     }
+
+    override def toString = toString(0)
+    def toString(depth: Int): String
   }
 
   case class @@(name: String, children: Term*) extends Term {
-    override def toString = {
-      val t = children map {_.toString}
-      s"${name}(${t.mkString(", ")})"
+    override def toString(depth: Int) = {
+      val t = children map {_.toString(depth + 1)}
+      s"\n${" " * depth * 2}${name}(${t.mkString(", ")})"
     }
   }
 
   case class Lst(elems: Term*) extends Term {
-    override def toString = {
-      val t = elems map {_.toString}
+    override def toString(depth: Int) = {
+      val t = elems map {_.toString(depth + 1)}
       s"[${t.mkString(", ")}]"
     }
   }
 
   case class Str(value: String) extends Term {
-    override def toString = "\"" + value + "\""
+    override def toString(depth: Int) = "\"" + value + "\""
   }
 
   object Term {
