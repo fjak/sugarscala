@@ -319,6 +319,9 @@ trait SGLRParsers {
     case "ProcDef" @@ ("FunSig" @@ (id, tParams, vParams), body) =>
       DefDef(mods, toTermName(id), toTypeDefs(tParams), toValDefss(vParams),
              scalaUnitConstr, toTree(body))
+    case "ProcDcl" @@ ("FunSig" @@ (id, tParams, vParams)) =>
+      DefDef(mods | Flags.DEFERRED, toTermName(id), toTypeDefs(tParams),
+             toValDefss(vParams), scalaUnitConstr, EmptyTree)
     case "FunDef" @@ ("FunSig" @@ (id, tParams, vParams), retType, body) =>
       DefDef(mods, toTermName(id), toTypeDefs(tParams), toValDefss(vParams),
              toTypeTree(retType), toTree(body))
