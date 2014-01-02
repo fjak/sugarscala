@@ -233,6 +233,9 @@ trait SGLRParsers {
 
     case "FunExpr" @@ (bindings, body) => Function(toValDefs(bindings), toExpr0(body))
 
+    case "IdFunExpr" @@ (id, body) =>
+      Function(List(ValDef(NoMods | Flags.PARAM, toTermName(id), TypeTree(), EmptyTree)), toExpr0(body))
+
     case "AssignmentExpr" @@ (lhs, rhs) => Assign(toExpr0(lhs), toExpr0(rhs))
 
     case "Assignment" @@ expr => toExpr0(expr)
