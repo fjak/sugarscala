@@ -39,11 +39,10 @@ trait SGLRParsers {
     mods.isTrait && (body forall treeInfo.isInterfaceMember)
 
   def toTree(term: Term): Tree = term match {
+    // --- Top Level Statements ---
     case "CompilationUnit" @@ (Lst(pkgs@_*), topStats) => toPackageDef(pkgs.toList, topStats)
 
     case "TopStatSemi" @@ (topStat, _) => toTree(topStat)
-
-    case "TemplateStatSemi" @@ (stat, _) => toTree(stat)
 
     case "TopTmplDef" @@ (mods, annots, "Object" @@ ("ObjectDef" @@ (name, body))) =>
       IObjectDef(toModifiers(mods, annots), toTermName(name), toTemplate(body))
@@ -57,6 +56,9 @@ trait SGLRParsers {
            (annots, mods, "Trait" @@
               ("TraitDef" @@ (id, typeParams, tplOpt))) =>
       IClassDef(toModifiers(mods, annots) | Flags.TRAIT | Flags.ABSTRACT, toTypeName(id), toTypeDefs(typeParams), Modifiers() | Flags.TRAIT, ListOfNil, toTemplate(tplOpt))
+
+    // --- Template Level Statements ---
+    case "TemplateStatSemi" @@ (stat, _) => toTree(stat)
 
     case "DefTemplateStat" @@ (annots, mods, "FunDefDef" @@ funDef) =>
       toDefDef(toModifiers(mods, annots), funDef)
@@ -83,34 +85,48 @@ trait SGLRParsers {
               ("TypeDef" @@ (id, tpc, rhs))) =>
       TypeDef(toModifiers(mods, annots), toTypeName(id), toTypeDefs(tpc), toTypeTree(rhs))
 
-    case "Some" @@ (t) => toTree(t)
+    case "DefTemplateStat" @@ (annots, mods, "ValPatDef" @@ ("PatDef" @@ (Lst(name), typ, expr))) =>
+      ValDef(toModifiers(mods, annots), toTermName(name), toTypeTree(typ), toTree(expr))
 
-    case @@("None") => EmptyTree
+    case "DefTemplateStat" @@ (annots, mods, "VarPatDef" @@ ("PatDef" @@ (Lst(name), typ, expr))) =>
+      ValDef(toModifiers(mods, annots) | Flags.MUTABLE, toTermName(name), toTypeTree(typ), toTree(expr))
+
+    case "DefTemplateStat" @@ (annots, mods, "VarPatDef" @@ ("WildcardVarDef" @@ (Lst(name), typ))) =>
+      ValDef(toModifiers(mods, annots) | Flags.MUTABLE | Flags.DEFAULTINIT, toTermName(name), toTypeTree(typ), EmptyTree)
+
+    case "ExprTemplateStat" @@ t => toTree(t)
+
+
+    // --- Block Level Statements ---
+    case "BlockStatSemi" @@ (t, _) => toTree(t)
+
+    case "DefBlockStat" @@ (annots, "ValPatDef" @@ ("PatDef" @@ (Lst(name), typ, expr))) =>
+      ValDef(toModifiers(annots), toTermName(name), toTypeTree(typ), toTree(expr))
+
+    case "DefBlockStat" @@ (annots, "VarPatDef" @@ ("PatDef" @@ (Lst(name), typ, expr))) =>
+      ValDef(toModifiers(annots) | Flags.MUTABLE, toTermName(name), toTypeTree(typ), toTree(expr))
 
     case "BlockExpr" @@ t => toTree(t)
 
     case "Block" @@ t => makeBlock(toTrees(t))
 
-    case "BlockStatSemi" @@ (t, _) => toTree(t)
 
-    case "AppExpr" @@ (fun, args) => Apply(toTree(fun), toTrees(args))
-
-    case "Id" @@ Str(name) => Ident(name)
-
-    case "Char" @@ Str(s) => Literal(Constant(toChar(s)))
-
-    case "String" @@ Str(s) => Literal(Constant(unescape(s)))
-
-    case "Int" @@ Str(s) => Literal(Constant(s.toInt))
-
-    case @@("False") => Literal(Constant(false))
-    case @@("True") => Literal(Constant(true))
-
+    // --- Imports ---
     case t @ @@("ImportExpr", _*) => toImport(t)
 
     case t @ @@("WildcardImportExpr", _*) => toImport(t)
 
     case t @ @@("SelectorsImportExpr", _*) => toImport(t)
+
+
+    // --- Some and None ---
+    case "Some" @@ (t) => toTree(t)
+
+    case @@("None") => EmptyTree
+
+
+    // --- Identifiers ---
+    case "Id" @@ Str(name) => Ident(name)
 
     case "StableId" @@ (qid, select) => Select(toTree(qid), toTermName(select))
 
@@ -123,7 +139,25 @@ trait SGLRParsers {
 
     case Str(name) => Ident(name)
 
-    case "ExprTemplateStat" @@ t => toTree(t)
+    case "Path" @@ l => toTree(l)
+
+
+    // --- Expressions ---
+    case "Char" @@ Str(s) => Literal(Constant(toChar(s)))
+
+    case "String" @@ Str(s) => Literal(Constant(unescape(s)))
+
+    case "Int" @@ Str(s) => Literal(Constant(s.toInt))
+
+    case @@("False") => Literal(Constant(false))
+
+    case @@("True") => Literal(Constant(true))
+
+    case @@("Null") => Literal(Constant(null))
+
+    case @@("This") => This(nme.EMPTY.toTypeName)
+
+    case "AppExpr" @@ (fun, args) => Apply(toTree(fun), toTrees(args))
 
     case "PrefixExpr" @@ (op, arg) =>
       Select(toTree(arg), toTermName(op).encode.prepend("unary_"))
@@ -141,26 +175,9 @@ trait SGLRParsers {
 
     case "FunExpr" @@ (bindings, body) => Function(toValDefs(bindings), toTree(body))
 
-    case "DefTemplateStat" @@ (annots, mods, "ValPatDef" @@ ("PatDef" @@ (Lst(name), typ, expr))) =>
-      ValDef(toModifiers(mods, annots), toTermName(name), toTypeTree(typ), toTree(expr))
-
-    case "DefTemplateStat" @@ (annots, mods, "VarPatDef" @@ ("PatDef" @@ (Lst(name), typ, expr))) =>
-      ValDef(toModifiers(mods, annots) | Flags.MUTABLE, toTermName(name), toTypeTree(typ), toTree(expr))
-
-    case "DefTemplateStat" @@ (annots, mods, "VarPatDef" @@ ("WildcardVarDef" @@ (Lst(name), typ))) =>
-      ValDef(toModifiers(mods, annots) | Flags.MUTABLE | Flags.DEFAULTINIT, toTermName(name), toTypeTree(typ), EmptyTree)
-
-    case "DefBlockStat" @@ (annots, "ValPatDef" @@ ("PatDef" @@ (Lst(name), typ, expr))) =>
-      ValDef(toModifiers(annots), toTermName(name), toTypeTree(typ), toTree(expr))
-
-    case "DefBlockStat" @@ (annots, "VarPatDef" @@ ("PatDef" @@ (Lst(name), typ, expr))) =>
-      ValDef(toModifiers(annots) | Flags.MUTABLE, toTermName(name), toTypeTree(typ), toTree(expr))
-
     case "AssignmentExpr" @@ (lhs, rhs) => Assign(toTree(lhs), toTree(rhs))
 
     case "Assignment" @@ expr => toTree(expr)
-
-    case "Path" @@ l => toTree(l)
 
     case "IfExpr" @@ (cond, then) => If(toTree(cond), toTree(then), Literal(Constant()))
 
@@ -168,14 +185,10 @@ trait SGLRParsers {
 
     case "MatchExpr" @@ (t, clauses) => Match(toTree(t), toCaseDefs(clauses))
 
-    case @@("This") => This(nme.EMPTY.toTypeName)
-
     case t @ "NewClassExpr" @@ tpl =>
       makeNew(toTypeTrees(tpl), emptyValDef, toTrees(tpl), toTreess(tpl), t.pos, tpl.pos)
 
     case "TypeApplication" @@ (expr, typeArgs) => TypeApply(toTree(expr), toTypeTrees(typeArgs))
-
-    case @@("Null") => Literal(Constant(null))
 
     case "WhileExpr" @@ (cond, body) => makeWhile(-1, toTree(cond), toTree(body))
 
