@@ -190,6 +190,10 @@ trait SGLRParsers {
     case "BlockExpr" @@ t => toExpr(t)
 
     case "Block" @@ t => makeBlock(toTrees(t))
+    case "Block" @@ (stats, sre) => makeBlock(toTrees(stats) :+ toExpr(sre))
+
+    case "SimpleResultExpr" @@ (id, typ, body) =>
+      Function(List(ValDef(NoMods | Flags.PARAM, toTermName(id), toTypeTree(typ), EmptyTree)), toTree(body))
 
     case Str(name) => Ident(name)
 
@@ -224,9 +228,8 @@ trait SGLRParsers {
     case "DesignatorAssignmentExpr" @@ (expr, id, rhs) =>
       Assign(Select(toExpr0(expr), toTermName(id)), toExpr0(rhs))
 
-    case "TupleExpr" @@ Lst() => Literal(Constant())
-
-    case "TupleExpr" @@ (Lst(t)) => toExpr(t)
+    case "TupleExpr" @@ Lst(terms@_*) =>
+      makeTupleTerm(terms.toList map toExpr0, true)
 
     case "FunExpr" @@ (bindings, body) => Function(toValDefs(bindings), toExpr0(body))
 
