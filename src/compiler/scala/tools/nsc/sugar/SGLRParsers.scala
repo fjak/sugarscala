@@ -276,7 +276,22 @@ trait SGLRParsers {
 
     case "ThrowExpr" @@ e => Throw(toExpr0(e))
 
+    case "ForExpr" @@ (enums, body) => makeFor(toEnums(enums), toTree(body))
+
     case _ => sys.error(s"Can not translate ${term} to expr")
+  }
+
+  def toEnum(term: Term): Enumerator = term match {
+    case "EnumeratorSemi" @@ (t, _) => toEnum(t)
+    case t @ "Generator" @@ (pat, rhs, guard) =>
+      // TODO: Figure out what valeq is about and make support for guards
+      makeGenerator(t.pos, toTree(pat), false, toTree(rhs))
+    case _ => sys.error(s"Can not translate ${term} to Enumerator")
+  }
+
+  def toEnums(term: Term): List[Enumerator] = term match {
+    case Lst(terms@_*) => terms.toList map toEnum
+    case _ => sys.error(s"Can not translate ${term} to List[Enumerator]")
   }
 
   def toArg(term: Term): Tree = term match {
