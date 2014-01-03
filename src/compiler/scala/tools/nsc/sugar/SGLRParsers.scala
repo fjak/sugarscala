@@ -235,7 +235,7 @@ trait SGLRParsers {
       Assign(Select(toExpr0(expr), toTermName(id)), toExpr0(rhs))
 
     case "TupleExpr" @@ Lst(terms@_*) =>
-      makeTupleTerm(terms.toList map toExpr0, true)
+      makeTupleTerm(terms.toList map toExpr, true)
 
     case "FunExpr" @@ (bindings, body) => Function(toValDefs(bindings), toExpr0(body))
 
