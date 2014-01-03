@@ -326,6 +326,8 @@ trait SGLRParsers {
       List(ImportSelector(termName, -1, termName, -1))
     }
     case "ImportSelectors" @@ Lst(t@_*) => (t map toImportSelector).toList
+    case "ImportSelectorsWithWildcard" @@ Lst(t@_*) =>
+      (t.toList map toImportSelector) :+ ImportSelector(nme.WILDCARD, -1, null, -1)
     case _ => sys.error(s"Can not transform ${term} to ImportSelectors")
   }
 
