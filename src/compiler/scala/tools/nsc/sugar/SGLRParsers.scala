@@ -386,6 +386,7 @@ trait SGLRParsers {
     case "CompoundType" @@ (typ, withs, refinement) =>
       CompoundTypeTree(Template(toTypeTree(typ) :: toTypeTrees(withs), emptyValDef, Nil))
     case "With" @@ t => toTypeTree(t)
+    case "ByNameParam" @@ t => byNameApplication(toTypeTree(t))
     case _ => sys.error(s"Can not translate ${term} to TypeTree")
   }
 
