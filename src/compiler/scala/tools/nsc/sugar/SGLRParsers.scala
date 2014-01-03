@@ -523,7 +523,7 @@ trait SGLRParsers {
 
   def toCaseDef(term: Term): CaseDef = term match {
     case "CaseClause" @@ (pat, @@("None"), blk) =>
-      CaseDef(toPatternTree(pat), EmptyTree, toTree(blk))
+      makeCaseDef(atPos(pat.pos) { toPatternTree(pat) }, EmptyTree, toTree(blk))
     case _ => sys.error(s"Can not translate ${term} to CaseDef")
   }
 
@@ -535,6 +535,7 @@ trait SGLRParsers {
   def toPatternTree(term: Term): Tree = term match {
     case "LiteralPattern" @@ lit => toTree(lit)
     case @@("WildcardPattern") => Ident(nme.WILDCARD)
+    case "TypedPattern" @@ (id, typ) => Typed(toTree(id), toTypeTree(typ))
     case _ => sys.error(s"Can not translate ${term} to Pattern")
   }
 
