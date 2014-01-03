@@ -225,7 +225,7 @@ trait SGLRParsers {
       Select(toExpr0(arg), toTermName(op).encode.prepend("unary_"))
 
     case "InfixExpr" @@ (lhs, op, rhs) =>
-      Apply(Select(toExpr0(lhs), toTermName(op).encode), List(toExpr0(rhs)))
+      makeBinop(true, toExpr0(lhs), toTermName(op).decode, toExpr0(rhs), op.pos)
 
     case "PostfixExpr" @@ (arg, op) => Select(toExpr0(arg), toTermName(op).encode)
 
