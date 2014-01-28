@@ -44,7 +44,7 @@ trait SGLRParsers {
 
     case "TopStatSemi" @@ (topStat, _) => toTree(topStat)
 
-    case "TopTmplDef" @@ (mods, annots, "Object" @@ ("ObjectDef" @@ (name, body))) =>
+    case "TopTmplDef" @@ (annots, mods, "Object" @@ ("ObjectDef" @@ (name, body))) =>
       IObjectDef(toModifiers(mods, annots), toTermName(name), toTemplate(body))
 
     case "TopTmplDef" @@
